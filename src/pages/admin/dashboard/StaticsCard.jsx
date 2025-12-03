@@ -9,7 +9,7 @@ export default function StatisticsCards({
   dateRange = null // Add dateRange prop to show filter info
 }) {
   const completionRate = totalTask > 0 ? (completeTask / totalTask) * 100 : 0;
-  const notDoneTask = totalTask - completeTask - pendingTask;
+  const notDoneTask = totalTask - completeTask - pendingTask - overdueTask;
 
   // Calculate all percentages
   const pendingRate = totalTask > 0 ? (pendingTask / totalTask) * 100 : 0;

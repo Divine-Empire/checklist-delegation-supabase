@@ -176,6 +176,144 @@ export const getDashboardDataCount = async (dashboardType, staffFilter = null, t
   }
 };
 
+// export const countTotalTaskApi = async (dashboardType, staffFilter = null, departmentFilter = null) => {
+//   const role = localStorage.getItem('role');
+//   const username = localStorage.getItem('user-name');
+
+//   try {
+//     const today = new Date().toISOString().split('T')[0];
+
+//     let query = supabase
+//       .from(dashboardType)
+//       .select('*', { count: 'exact', head: true })
+//       .lte('task_start_date', `${today}T23:59:59`);
+
+//     // Apply filters
+//     if (role === 'user' && username) {
+//       query = query.eq('name', username);
+//     } else if (staffFilter && staffFilter !== 'all') {
+//       query = query.eq('name', staffFilter);
+//     }
+
+//     // Apply department filter (only for checklist)
+//     if (departmentFilter && departmentFilter !== 'all' && dashboardType === 'checklist') {
+//       query = query.eq('department', departmentFilter);
+//     }
+
+//     const { count, error } = await query;
+
+//     if (error) {
+//       console.error("Error counting total tasks:", error);
+//       throw error;
+//     }
+
+//     return count || 0;
+
+//   } catch (error) {
+//     console.error("Error from Supabase:", error);
+//     throw error;
+//   }
+// };
+
+// export const countCompleteTaskApi = async (dashboardType, staffFilter = null, departmentFilter = null) => {
+//   const role = localStorage.getItem('role');
+//   const username = localStorage.getItem('user-name');
+
+//   try {
+//     const today = new Date().toISOString().split('T')[0];
+//     let query;
+
+//     if (dashboardType === 'delegation') {
+//       query = supabase
+//         .from('delegation')
+//         .select('*', { count: 'exact', head: true })
+//         .not('submission_date', 'is', null)
+//         .lte('task_start_date', `${today}T23:59:59`);
+//     } else {
+//       query = supabase
+//         .from('checklist')
+//         .select('*', { count: 'exact', head: true })
+//         .eq('status', 'Yes')
+//         .lte('task_start_date', `${today}T23:59:59`);
+//     }
+
+//     // Apply filters
+//     if (role === 'user' && username) {
+//       query = query.eq('name', username);
+//     } else if (staffFilter && staffFilter !== 'all') {
+//       query = query.eq('name', staffFilter);
+//     }
+
+//     // Apply department filter (only for checklist)
+//     if (departmentFilter && departmentFilter !== 'all' && dashboardType === 'checklist') {
+//       query = query.eq('department', departmentFilter);
+//     }
+
+//     const { count, error } = await query;
+
+//     if (error) {
+//       console.error('Error counting complete tasks:', error);
+//       throw error;
+//     }
+
+//     return count || 0;
+
+//   } catch (error) {
+//     console.error('Unexpected error:', error);
+//     throw error;
+//   }
+// };
+
+export const countPendingOrDelayTaskApi = async (dashboardType, staffFilter = null, departmentFilter = null) => {
+  const role = localStorage.getItem('role');
+  const username = localStorage.getItem('user-name');
+
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    let query;
+
+    if (dashboardType === 'delegation') {
+      query = supabase
+        .from('delegation')
+        .select('*', { count: 'exact', head: true })
+        .is('submission_date', null)
+        .gte('task_start_date', `${today}T00:00:00`)
+        .lte('task_start_date', `${today}T23:59:59`);
+    } else {
+      query = supabase
+        .from('checklist')
+        .select('*', { count: 'exact', head: true })
+        .or('status.is.null,status.neq.Yes')
+        .gte('task_start_date', `${today}T00:00:00`)
+        .lte('task_start_date', `${today}T23:59:59`);
+    }
+
+    // Apply filters
+    if (role === 'user' && username) {
+      query = query.eq('name', username);
+    } else if (staffFilter && staffFilter !== 'all') {
+      query = query.eq('name', staffFilter);
+    }
+
+    // Apply department filter (only for checklist)
+    if (departmentFilter && departmentFilter !== 'all' && dashboardType === 'checklist') {
+      query = query.eq('department', departmentFilter);
+    }
+
+    const { count, error } = await query;
+
+    if (error) {
+      console.error('Error counting pending tasks:', error);
+      throw error;
+    }
+
+    return count || 0;
+
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    throw error;
+  }
+};
 
 export const getDashboardSummaryApi = async (dashboardType, staffFilter = null) => {
   try {
@@ -903,138 +1041,20 @@ export const fetchCompleteChecklistDataByDateRangeApi = async (
   }
 };
 
-// First, let's create a reusable function for the date range
+// Helper function to get current month date range
+// Common date range function
 const getCurrentMonthRange = () => {
   const now = new Date();
-
-  // Get first day of current month
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  // Format dates for Supabase query
-  const formatDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const startDate = formatDate(firstDay);
-  const endDate = formatDate(now);
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const today = new Date();
 
   return {
-    start: `${startDate}T00:00:00`,
-    end: `${endDate}T23:59:59`
+    start: firstDayOfMonth.toISOString().split('T')[0] + 'T00:00:00',
+    end: today.toISOString().split('T')[0] + 'T23:59:59',
+    todayStart: today.toISOString().split('T')[0] + 'T00:00:00'
   };
 };
 
-// Updated API for pending/delay tasks (current month)
-export const countPendingOrDelayTaskApi = async (dashboardType, staffFilter = null, departmentFilter = null) => {
-  const role = localStorage.getItem('role');
-  const username = localStorage.getItem('user-name');
-
-  try {
-    // Get current month date range
-    const dateRange = getCurrentMonthRange();
-
-    let query;
-
-    if (dashboardType === 'delegation') {
-      query = supabase
-        .from('delegation')
-        .select('*', { count: 'exact', head: true })
-        .is('submission_date', null)
-        .gte('task_start_date', dateRange.start)
-        .lte('task_start_date', dateRange.end);
-    } else {
-      query = supabase
-        .from('checklist')
-        .select('*', { count: 'exact', head: true })
-        .or('status.is.null,status.neq.Yes')
-        .gte('task_start_date', dateRange.start)
-        .lte('task_start_date', dateRange.end);
-    }
-
-    // Apply filters
-    if (role === 'user' && username) {
-      query = query.eq('name', username);
-    } else if (staffFilter && staffFilter !== 'all') {
-      query = query.eq('name', staffFilter);
-    }
-
-    // Apply department filter (only for checklist)
-    if (departmentFilter && departmentFilter !== 'all' && dashboardType === 'checklist') {
-      query = query.eq('department', departmentFilter);
-    }
-
-    const { count, error } = await query;
-
-    if (error) {
-      console.error('Error counting pending tasks:', error);
-      throw error;
-    }
-
-    return count || 0;
-
-  } catch (error) {
-    console.error('Unexpected error:', error);
-    throw error;
-  }
-};
-
-// Updated API for overdue/extended tasks (before current month)
-export const countOverDueORExtendedTaskApi = async (dashboardType, staffFilter = null, departmentFilter = null) => {
-  const role = localStorage.getItem('role');
-  const username = localStorage.getItem('user-name');
-
-  try {
-    // Get first day of current month for filtering tasks before current month
-    const now = new Date();
-    const firstDayOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const firstDayStr = firstDayOfCurrentMonth.toISOString().split('T')[0];
-
-    let query;
-
-    if (dashboardType === 'delegation') {
-      query = supabase
-        .from('delegation')
-        .select('*', { count: 'exact', head: true })
-        .is('submission_date', null)
-        .lt('task_start_date', `${firstDayStr}T00:00:00`);
-    } else {
-      query = supabase
-        .from('checklist')
-        .select('*', { count: 'exact', head: true })
-        .or('status.is.null,status.neq.Yes')
-        .is('submission_date', null)
-        .lt('task_start_date', `${firstDayStr}T00:00:00`);
-    }
-
-    // Apply filters
-    if (role === 'user' && username) {
-      query = query.eq('name', username);
-    } else if (staffFilter && staffFilter !== 'all') {
-      query = query.eq('name', staffFilter);
-    }
-
-    // Apply department filter (only for checklist)
-    if (departmentFilter && departmentFilter !== 'all' && dashboardType === 'checklist') {
-      query = query.eq('department', departmentFilter);
-    }
-
-    const { count, error } = await query;
-
-    if (error) {
-      console.error('Error counting overdue tasks:', error);
-      throw error;
-    }
-
-    return count || 0;
-
-  } catch (error) {
-    console.error('Unexpected error:', error);
-    throw error;
-  }
-};
 
 export const countTotalTaskApi = async (dashboardType, staffFilter = null, departmentFilter = null) => {
   const role = localStorage.getItem('role');
@@ -1076,6 +1096,7 @@ export const countTotalTaskApi = async (dashboardType, staffFilter = null, depar
   }
 };
 
+// 2. Count Complete Tasks (Current Month)
 export const countCompleteTaskApi = async (dashboardType, staffFilter = null, departmentFilter = null) => {
   const role = localStorage.getItem('role');
   const username = localStorage.getItem('user-name');
@@ -1127,3 +1148,55 @@ export const countCompleteTaskApi = async (dashboardType, staffFilter = null, de
   }
 };
 
+// 3. Count Overdue Tasks (Current Month) - UPDATED
+export const countOverDueORExtendedTaskApi = async (dashboardType, staffFilter = null, departmentFilter = null) => {
+  const role = localStorage.getItem('role');
+  const username = localStorage.getItem('user-name');
+
+  try {
+    const { start, todayStart } = getCurrentMonthRange();
+    let query;
+
+    if (dashboardType === 'delegation') {
+      query = supabase
+        .from('delegation')
+        .select('*', { count: 'exact', head: true })
+        .is('submission_date', null)
+        .lt('task_start_date', todayStart)  // Overdue: started before today
+        .gte('task_start_date', start);     // Current month: from 1st of month
+    } else {
+      query = supabase
+        .from('checklist')
+        .select('*', { count: 'exact', head: true })
+        .or('status.is.null,status.neq.Yes')
+        .is('submission_date', null)
+        .lt('task_start_date', todayStart)  // Overdue: started before today
+        .gte('task_start_date', start);     // Current month: from 1st of month
+    }
+
+    // Apply filters
+    if (role === 'user' && username) {
+      query = query.eq('name', username);
+    } else if (staffFilter && staffFilter !== 'all') {
+      query = query.eq('name', staffFilter);
+    }
+
+    // Apply department filter (only for checklist)
+    if (departmentFilter && departmentFilter !== 'all' && dashboardType === 'checklist') {
+      query = query.eq('department', departmentFilter);
+    }
+
+    const { count, error } = await query;
+
+    if (error) {
+      console.error('Error counting overdue tasks:', error);
+      throw error;
+    }
+
+    return count || 0;
+
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    throw error;
+  }
+};
