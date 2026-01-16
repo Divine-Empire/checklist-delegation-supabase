@@ -541,11 +541,14 @@ export default function AssignTask() {
                   className="w-full rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                 >
                   <option value="">Select Department</option>
-                  {department.map((deptName, index) => (
-                    <option key={index} value={deptName}>
-                      {deptName}
-                    </option>
-                  ))}
+                  {department.map((deptName, index) => {
+                    const deptValue = typeof deptName === 'object' && deptName !== null ? deptName.department : deptName;
+                    return (
+                      <option key={index} value={deptValue}>
+                        {deptValue}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -566,11 +569,14 @@ export default function AssignTask() {
                   className="w-full rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                 >
                   <option value="">Select Given By</option>
-                  {givenBy.map((person, index) => (
-                    <option key={index} value={person}>
-                      {person}
-                    </option>
-                  ))}
+                  {givenBy.map((person, index) => {
+                    const personValue = typeof person === 'object' && person !== null ? person.given_by : person;
+                    return (
+                      <option key={index} value={personValue}>
+                        {personValue}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

@@ -47,7 +47,7 @@ export const fetchDepartmentDataApi = async () => {
   try {
     const { data, error } = await supabase
       .from('users')
-      .select('id, department, given_by') 
+      .select('id, department, given_by')
       .not('department', 'is', null)     // Exclude null departments
       .neq('department', '')             // Exclude empty string departments
       .order('department', { ascending: true });
@@ -106,7 +106,9 @@ export const createUserApi = async (newUser) => {
           status: newUser.status,
           user_access: newUser.user_access
         }
-      ]);
+      ])
+      .select()
+      .single();
 
     if (error) {
       console.log("Error when posting data:", error);
@@ -147,8 +149,12 @@ export const updateUserDataApi = async ({ id, updatedUser }) => {
     const { data, error } = await supabase
       .from("users")
       .update(updateData)
-      .eq("id", id);
+      .eq("id", id)
+      .select()
+      .single();
 
+      console.log(data,"data")
+      console.log(error,"error")
     if (error) {
       console.log("Error when update data", error);
       throw error;
@@ -186,10 +192,12 @@ export const createDepartmentApi = async (newDept) => {
       .insert([
         {
           id: newId, // 👈 manually setting the next ID
-         department:newDept.name,
-         given_by:newDept.givenBy,
+          department: newDept.name,
+          given_by: newDept.givenBy,
         }
-      ]);
+      ])
+      .select()
+      .single();
 
     if (error) {
       console.log("Error when posting data:", error);
@@ -203,9 +211,9 @@ export const createDepartmentApi = async (newDept) => {
   }
 };
 
-export const updateDepartmentDataApi = async ({id, updatedDept}) => {
+export const updateDepartmentDataApi = async ({ id, updatedDept }) => {
   console.log(updatedDept);
-  
+
   try {
     if (!updatedDept || !updatedDept.department || !updatedDept.given_by) {
       throw new Error("Missing department or given_by data");
@@ -217,7 +225,9 @@ export const updateDepartmentDataApi = async ({id, updatedDept}) => {
         department: updatedDept.department,
         given_by: updatedDept.given_by,
       })
-      .eq("id", id);
+      .eq("id", id)
+      .select()
+      .single();
 
     if (error) {
       console.log("Error when updating data", error);

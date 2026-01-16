@@ -123,8 +123,8 @@ export const pushAssignTaskApi = async (generatedTasks) => {
     task_description: task.description,
     task_start_date: task.dueDate,
     frequency: task.frequency,
-    enable_reminder: task.enableReminders ? "Yes" : "No",
-    require_attachment: task.requireAttachment ? "Yes" : "No",
+    enable_reminder: task.enableReminders ? "yes" : "no",
+    require_attachment: task.requireAttachment ? "yes" : "no",
   }));
 
 

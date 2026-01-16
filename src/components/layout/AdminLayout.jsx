@@ -106,14 +106,14 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       submenu: true,
       showFor: ["admin", "user"],
     },
-    {
-      href: "/dashboard/mis-report",
-      label: "MIS Report",
-      icon: CheckSquare,
-      active: location.pathname.includes("/dashboard/mis-report"),
-      // Only show for super admin (username = 'admin')
-      showFor: isSuperAdmin ? ["admin"] : [],
-    },
+    // {
+    //   href: "/dashboard/mis-report",
+    //   label: "MIS Report",
+    //   icon: CheckSquare,
+    //   active: location.pathname.includes("/dashboard/mis-report"),
+    //   // Only show for super admin (username = 'admin')
+    //   showFor: isSuperAdmin ? ["admin"] : [],
+    // },
     {
       href: "/dashboard/setting",
       label: "Settings",
@@ -163,7 +163,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
             className="flex items-center gap-2 font-semibold text-blue-700"
           >
             <ClipboardList className="h-5 w-5 text-blue-600" />
-            <span>Checklist & Delegation </span>
+            <span>Task Management System </span>
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto p-2">
@@ -342,7 +342,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <ClipboardList className="h-5 w-5 text-blue-600" />
-                <span>Checklist & Delegation</span>
+                <span>Task Management System</span>
               </Link>
             </div>
             <nav className="flex-1 overflow-y-auto p-2 bg-white">
@@ -503,14 +503,14 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
         <header className="flex h-14 items-center justify-between border-b border-blue-200 bg-white px-4 md:px-6">
           <div className="flex md:hidden w-8"></div>
           <h1 className="text-lg font-semibold text-blue-700">
-            Checklist & Delegation
+            Task Management System
           </h1>
           <div className="flex items-center">
-            <img
+            {/* <img
               src="/logo.jpg"
               alt="Company Logo"
               className="h-8 w-auto md:h-10 lg:h-12 transition-all duration-300"
-            />
+            /> */}
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-gradient-to-br from-blue-50 to-purple-50 pb-20 sm:pb-6">
@@ -575,9 +575,9 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
               rel="noopener noreferrer"
               className="sm:hidden sm:hover:underline flex items-center justify-center gap-1 text-gray-900 transition-colors duration-300 mb-[-5px]"
             >
-              Powered by-
+              All Right Reserved by -
               <span className="font-bold drop-shadow-md text-gray-900">
-                Botivate
+                Chitrasen Tandi
               </span>
             </a>
 
@@ -587,9 +587,9 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
               rel="noopener noreferrer"
               className="hidden  hover:underline sm:flex items-center justify-center gap-1 text-white/90 hover:text-white transition-colors duration-300 mb-[-5px]"
             >
-              Powered by-
+              All Right Reserved by -
               <span className="font-bold text-white drop-shadow-md">
-                Botivate
+                Chitrasen Tandi
               </span>
             </a>
           </div>
