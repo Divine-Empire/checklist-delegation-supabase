@@ -29,7 +29,6 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
   const [username, setUsername] = useState("");
   const [userRole, setUserRole] = useState("");
   const [userEmail, setUserEmail] = useState("");
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const [isUserPopupOpen, setIsUserPopupOpen] = useState(false);
 
@@ -48,9 +47,6 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
     setUsername(storedUsername);
     setUserRole(storedRole || "user");
     setUserEmail(storedEmail);
-
-    // Check if this is the super admin (username = 'admin')
-    setIsSuperAdmin(storedUsername === "admin");
   }, [navigate]);
 
   // Handle logout
@@ -67,7 +63,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
     { id: "sales", name: "Checklist", link: "/dashboard/data/sales" },
   ];
 
-  // Update the routes array based on user role and super admin status
+  // Update the routes array based on user role
   const routes = [
     {
       href: "/dashboard/admin",
@@ -81,8 +77,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       label: "Quick Task",
       icon: Zap,
       active: location.pathname === "/dashboard/quick-task",
-      // Only show for super admin (username = 'admin')
-      showFor: isSuperAdmin ? ["admin"] : [],
+      showFor: ["admin"],
     },
     {
       href: "/dashboard/assign-task",
@@ -111,16 +106,14 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
     //   label: "MIS Report",
     //   icon: CheckSquare,
     //   active: location.pathname.includes("/dashboard/mis-report"),
-    //   // Only show for super admin (username = 'admin')
-    //   showFor: isSuperAdmin ? ["admin"] : [],
+    //   showFor: ["admin"],
     // },
     {
       href: "/dashboard/setting",
       label: "Settings",
       icon: Settings,
       active: location.pathname.includes("/dashboard/setting"),
-      // Only show for super admin (username = 'admin')
-      showFor: isSuperAdmin ? ["admin"] : [],
+      showFor: ["admin"],
     },
   ];
 
@@ -131,7 +124,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
     );
   };
 
-  // Filter routes based on user role and super admin status
+  // Filter routes based on user role
   const getAccessibleRoutes = () => {
     const userRole = localStorage.getItem("role") || "user";
     return routes.filter((route) => route.showFor.includes(userRole));
@@ -248,11 +241,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-blue-700 truncate">
                     {username || "User"}{" "}
-                    {userRole === "admin"
-                      ? isSuperAdmin
-                        ? "(Super Admin)"
-                        : "(Admin)"
-                      : ""}
+                    {userRole === "admin" ? "(Admin)" : ""}
                   </p>
                   <p className="text-xs text-blue-600 truncate">
                     {userEmail || "user@example.com"}
@@ -428,11 +417,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                   <div>
                     <p className="text-sm font-medium text-blue-700">
                       {username || "User"}{" "}
-                      {userRole === "admin"
-                        ? isSuperAdmin
-                          ? "(Super Admin)"
-                          : "(Admin)"
-                        : ""}
+                      {userRole === "admin" ? "(Admin)" : ""}
                     </p>
                     <p className="text-xs text-blue-600">
                       {userEmail || "user@example.com"}
@@ -611,11 +596,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                   <div>
                     <p className="text-sm font-medium text-blue-700">
                       {username || "User"}{" "}
-                      {userRole === "admin"
-                        ? isSuperAdmin
-                          ? "(Super Admin)"
-                          : "(Admin)"
-                        : ""}
+                      {userRole === "admin" ? "(Admin)" : ""}
                     </p>
                     <p className="text-xs text-blue-600">
                       {userEmail || "user@example.com"}

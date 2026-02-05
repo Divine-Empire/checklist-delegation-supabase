@@ -36,11 +36,8 @@ export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchT
     // Apply role filter
     if (role === 'user' && username) {
       query = query.eq('name', username);
-    } else if (role === 'admin' && userAccess) {
-      // Filter by departments in user_access for admin
-      const allowedDepartments = userAccess.split(',').map(dept => dept.trim());
-      query = query.in('department', allowedDepartments);
     }
+    // Admin users see all data (no department filtering)
 
     const { data, error, count } = await query;
 
@@ -61,7 +58,7 @@ export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchT
 export const fetchChechListDataForHistory = async (page = 1, searchTerm = '') => {
   const itemsPerPage = 50;
   const start = (page - 1) * itemsPerPage;
-  
+
   const role = localStorage.getItem('role');
   const username = localStorage.getItem('user-name');
   const userAccess = localStorage.getItem('user_access');
@@ -83,11 +80,8 @@ export const fetchChechListDataForHistory = async (page = 1, searchTerm = '') =>
 
     if (role === 'user' && username) {
       query = query.eq('name', username);
-    } else if (role === 'admin' && userAccess) {
-      // Filter by departments in user_access for admin
-      const allowedDepartments = userAccess.split(',').map(dept => dept.trim());
-      query = query.in('department', allowedDepartments);
     }
+    // Admin users see all data (no department filtering)
 
     const { data, error, count } = await query;
 
@@ -132,7 +126,7 @@ export const updateChecklistData = async (submissionData) => {
 
           // 3. Upload to Supabase storage
           const { error: uploadError } = await supabase.storage
-            .from('checklist')
+            .from('checklist-delegation')
             .upload(filePath, file, {
               cacheControl: '3600',
               contentType: item.image.type,
@@ -143,11 +137,11 @@ export const updateChecklistData = async (submissionData) => {
 
           // 4. Get public URL
           const { data: { publicUrl } } = supabase.storage
-            .from('checklist')
+            .from('checklist-delegation')
             .getPublicUrl(filePath);
 
           if (!publicUrl) throw new Error('Failed to generate public URL');
-          
+
           imageUrl = publicUrl;
           console.log('Image uploaded successfully:', imageUrl);
         } catch (uploadError) {
@@ -159,7 +153,7 @@ export const updateChecklistData = async (submissionData) => {
       // Prepare update object
       return {
         task_id: item.taskId,
-        status: item.status , // Convert to boolean if needed
+        status: item.status, // Convert to boolean if needed
         remark: item.remarks,
         submission_date: new Date().toISOString(),
         image: imageUrl,
@@ -170,15 +164,33 @@ export const updateChecklistData = async (submissionData) => {
       };
     }));
 
-    // 5. Update checklist table
-    const { data, error } = await supabase
-      .from('checklist')
-      .upsert(updates, { onConflict: ['task_id'] });
+    // 5. Update checklist table individually for reliability and to avoid enum errors
+    console.log('Starting Supabase updates for IDs:', updates.map(u => u.task_id));
 
-    if (error) throw error;
+    const results = await Promise.all(updates.map(async (updateObj) => {
+      // Ensure we ONLY send fields that should be updated
+      const cleanUpdate = {
+        status: updateObj.status,
+        remark: updateObj.remark,
+        submission_date: updateObj.submission_date,
+        image: updateObj.image
+      };
 
-    console.log('Checklist updated successfully:', data);
-    return data;
+      const { data, error } = await supabase
+        .from('checklist')
+        .update(cleanUpdate)
+        .eq('task_id', updateObj.task_id)
+        .select();
+
+      if (error) {
+        console.error(`Error updating task ${updateObj.task_id}:`, error);
+        throw error;
+      }
+      return data[0];
+    }));
+
+    console.log('Successfully updated checklist in Supabase:', results);
+    return results;
 
   } catch (error) {
     console.error('Error in updateChecklistData:', error);
@@ -200,7 +212,7 @@ export const postChecklistAdminDoneAPI = async (selectedHistoryItems) => {
 
     // Prepare the updates
     const updates = selectedHistoryItems.map(item => ({
-      task_id: item.task_id, // Assuming each item has an 'id' field
+      task_id: typeof item === 'object' ? item.task_id : item,
       admin_done: "Done",
       // You can add other fields to update if needed
     }));
@@ -218,7 +230,7 @@ export const postChecklistAdminDoneAPI = async (selectedHistoryItems) => {
 
     console.log("Successfully updated items:", data);
     return { data };
-    
+
   } catch (error) {
     console.error("Error in supabase operation:", error);
     return { error };

@@ -46,14 +46,14 @@ export const insertDelegationDoneAndUpdate = createAsyncThunk(
           if (taskImage) {
             try {
               console.log('Uploading image for task:', taskData.task_id);
-              
+
               // Create a unique filename
               const timestamp = Date.now();
               const fileName = `delegation_${taskData.task_id}_${timestamp}_${taskImage.name}`;
-              
+
               // Upload to Supabase storage
               const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('delegation') // Make sure this bucket exists
+                .from('checklist-delegation') // Make sure this bucket exists
                 .upload(fileName, taskImage);
 
               if (uploadError) {
@@ -62,11 +62,11 @@ export const insertDelegationDoneAndUpdate = createAsyncThunk(
               } else {
                 // Get public URL
                 const { data: { publicUrl } } = supabase.storage
-                  .from('delegation')
+                  .from('checklist-delegation')
                   .getPublicUrl(fileName);
 
                 imageUrl = publicUrl;
-                
+
                 // Update delegation_done with image URL
                 const { error: updateImageError } = await supabase
                   .from('delegation_done')
@@ -89,8 +89,8 @@ export const insertDelegationDoneAndUpdate = createAsyncThunk(
           let delegationUpdate = {
             updated_at: new Date().toISOString(),
             submission_date: new Date().toISOString(),
-            image:imageUrl,
-            remarks:taskData.reason
+            image: imageUrl,
+            remarks: taskData.reason
           };
 
           if (taskData.status === 'done') {
@@ -223,7 +223,7 @@ export const fetchDelegationDataSortByDate = async () => {
   const role = localStorage.getItem("role");
   const username = localStorage.getItem("user-name");
   const userAccess = localStorage.getItem("user_access"); // Add this line
-  
+
   try {
     let query = supabase
       .from('delegation')
@@ -234,11 +234,8 @@ export const fetchDelegationDataSortByDate = async () => {
     // Apply role-based filter
     if (role === 'user' && username) {
       query = query.eq('name', username);
-    } else if (role === 'admin' && userAccess) {
-      // Filter by departments in user_access for admin
-      const allowedDepartments = userAccess.split(',').map(dept => dept.trim());
-      query = query.in('department', allowedDepartments);
     }
+    // Admin users see all data (no department filtering)
 
     const { data, error } = await query;
 
@@ -260,7 +257,7 @@ export const fetchDelegation_DoneDataSortByDate = async () => {
   const role = localStorage.getItem("role");
   const username = localStorage.getItem("user-name");
   const userAccess = localStorage.getItem("user_access"); // Add this line
-  
+
   try {
     let query = supabase
       .from('delegation_done')
@@ -270,11 +267,8 @@ export const fetchDelegation_DoneDataSortByDate = async () => {
     // Filter by user if role is 'user'
     if (role === 'user' && username) {
       query = query.eq('name', username);
-    } else if (role === 'admin' && userAccess) {
-      // Filter by departments in user_access for admin
-      const allowedDepartments = userAccess.split(',').map(dept => dept.trim());
-      query = query.in('department', allowedDepartments);
     }
+    // Admin users see all data (no department filtering)
 
     const { data, error } = await query;
 

@@ -44,6 +44,14 @@ function AccountDataPage() {
   const [userRole, setUserRole] = useState("")
   const [username, setUsername] = useState("")
 
+  // NEW: Admin pending task selection states
+  const [selectedPendingItems, setSelectedPendingItems] = useState([]);
+  const [markingPendingAsDone, setMarkingPendingAsDone] = useState(false);
+  const [pendingConfirmationModal, setPendingConfirmationModal] = useState({
+    isOpen: false,
+    itemCount: 0,
+  });
+
   const formatDateToDDMMYYYY = (date) => {
     const day = date.getDate().toString().padStart(2, "0")
     const month = (date.getMonth() + 1).toString().padStart(2, "0")
@@ -282,8 +290,11 @@ function AccountDataPage() {
         const columnGValue = rowValues[6]
         const columnKValue = rowValues[10]
         const columnMValue = rowValues[12]
+        const columnPValue = rowValues[15] // Admin Done column (Column P)
 
-        if (columnMValue && columnMValue.toString().trim() === "DONE") {
+        // Skip if already marked as done in status column (M) OR if already processed by admin (P)
+        if ((columnMValue && columnMValue.toString().trim() === "DONE") ||
+            (columnPValue && columnPValue.toString().trim() === "Done")) {
           return
         }
 
@@ -318,6 +329,7 @@ function AccountDataPage() {
           { id: "col12", label: "Status", type: "string" },
           { id: "col13", label: "Remarks", type: "string" },
           { id: "col14", label: "Uploaded Image", type: "string" },
+          { id: "col15", label: "Admin Done", type: "string" }, // Column P
         ]
 
         columnHeaders.forEach((header, index) => {
@@ -443,9 +455,136 @@ function AccountDataPage() {
     resetFilters()
   }
 
+  // NEW: Admin functions for pending task management
+  const handleMarkMultiplePendingDone = async () => {
+    if (selectedPendingItems.length === 0) {
+      return;
+    }
+    if (markingPendingAsDone) return;
+
+    // Open confirmation modal
+    setPendingConfirmationModal({
+      isOpen: true,
+      itemCount: selectedPendingItems.length,
+    });
+  };
+
+  // NEW: Admin Done submission handler for pending tasks - Store "Done" text instead of timestamp
+  const confirmMarkPendingDone = async () => {
+    // Close the modal
+    setPendingConfirmationModal({ isOpen: false, itemCount: 0 });
+    setMarkingPendingAsDone(true);
+
+    try {
+      // Prepare submission data for multiple items
+      const submissionData = selectedPendingItems.map((pendingItem) => ({
+        taskId: pendingItem._taskId || pendingItem["col1"],
+        rowIndex: pendingItem._rowIndex,
+        actualDate: "", // Clear actual date
+        status: "", // Clear status
+        remarks: "", // Clear remarks
+        imageUrl: "", // Clear image URL
+        adminDoneStatus: "Done", // This will update Column P
+      }));
+
+      const formData = new FormData();
+      formData.append("sheetName", CONFIG.SHEET_NAME);
+      formData.append("action", "updateTaskData"); // Use the existing action
+      formData.append("rowData", JSON.stringify(submissionData));
+
+      const response = await fetch(CONFIG.APPS_SCRIPT_URL, {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        // Remove processed items from pending view
+        setAccountData((prev) =>
+          prev.filter(
+            (item) =>
+              !selectedPendingItems.some(
+                (selected) => selected._id === item._id
+              )
+          )
+        );
+
+        setSelectedPendingItems([]);
+        setSuccessMessage(
+          `Successfully marked ${selectedPendingItems.length} items as Admin Done!`
+        );
+
+        // Refresh data
+        setTimeout(() => {
+          fetchSheetData();
+        }, 2000);
+      } else {
+        throw new Error(result.error || "Failed to mark items as Admin Done");
+      }
+    } catch (error) {
+      console.error("Error marking pending tasks as Admin Done:", error);
+      setSuccessMessage(`Failed to mark pending tasks as Admin Done: ${error.message}`);
+    } finally {
+      setMarkingPendingAsDone(false);
+    }
+  };
+
+  // NEW: Confirmation modal component for pending tasks
+  const PendingConfirmationModal = ({ isOpen, itemCount, onConfirm, onCancel }) => {
+    if (!isOpen) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+          <div className="flex items-center justify-center mb-4">
+            <div className="bg-yellow-100 text-yellow-600 rounded-full p-3 mr-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800">
+              Mark Pending Items as Admin Done
+            </h2>
+          </div>
+
+          <p className="text-gray-600 text-center mb-6">
+            Are you sure you want to mark {itemCount}{" "}
+            {itemCount === 1 ? "item" : "items"} as Admin Done?
+          </p>
+
+          <div className="flex justify-center space-x-4">
+            <button
+              onClick={onCancel}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const handleSubmit = async () => {
     const selectedItemsArray = Array.from(selectedItems)
-   
+
     if (selectedItemsArray.length === 0) {
       alert("Please select at least one item to submit")
       return
@@ -619,6 +758,23 @@ function AccountDataPage() {
                 {isSubmitting ? "Processing..." : `Submit Selected (${selectedItemsCount})`}
               </button>
             )}
+
+            {/* Admin Submit Button for Pending Tasks View */}
+            {!showHistory &&
+              userRole === "admin" &&
+              selectedPendingItems.length > 0 && (
+                <div className="fixed bottom-6 right-6 sm:top-40 sm:right-10 z-50">
+                  <button
+                    onClick={handleMarkMultiplePendingDone}
+                    disabled={markingPendingAsDone}
+                    className="rounded-md bg-green-600 text-white px-4 py-2 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+                  >
+                    {markingPendingAsDone
+                      ? "Processing..."
+                      : `Mark ${selectedPendingItems.length} Items as Admin Done`}
+                  </button>
+                </div>
+              )}
           </div>
         </div>
 
@@ -868,6 +1024,32 @@ function AccountDataPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    {/* Admin Select Column Header */}
+                    {userRole === "admin" && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                        <div className="flex flex-col items-center">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                            checked={
+                              filteredAccountData.length > 0 &&
+                              selectedPendingItems.length === filteredAccountData.length
+                            }
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedPendingItems(filteredAccountData);
+                              } else {
+                                setSelectedPendingItems([]);
+                              }
+                            }}
+                          />
+                          <span className="text-xs text-gray-400 mt-1">
+                            Admin
+                          </span>
+                        </div>
+                      </th>
+                    )}
+
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <input
                         type="checkbox"
@@ -894,11 +1076,38 @@ function AccountDataPage() {
                   {filteredAccountData.length > 0 ? (
                     filteredAccountData.map((account) => {
                       const isSelected = selectedItems.has(account._id)
+                      const isAdminSelected = selectedPendingItems.some(
+                        (item) => item._id === account._id
+                      );
+
                       return (
                         <tr
                           key={account._id}
                           className={`${isSelected ? "bg-purple-50" : ""} hover:bg-gray-50`}
                         >
+                          {/* Admin Select Checkbox */}
+                          {userRole === "admin" && (
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex flex-col items-center">
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                  checked={isAdminSelected}
+                                  onChange={() => {
+                                    setSelectedPendingItems((prev) =>
+                                      prev.some((item) => item._id === account._id)
+                                        ? prev.filter((item) => item._id !== account._id)
+                                        : [...prev, account]
+                                    );
+                                  }}
+                                />
+                                <span className="text-xs text-gray-400 mt-1">
+                                  Admin
+                                </span>
+                              </div>
+                            </td>
+                          )}
+
                           <td className="px-6 py-4 whitespace-nowrap">
                             <input
                               type="checkbox"
@@ -1031,6 +1240,16 @@ function AccountDataPage() {
             </div>
           )}
         </div>
+
+        {/* NEW: Pending Confirmation Modal */}
+        <PendingConfirmationModal
+          isOpen={pendingConfirmationModal.isOpen}
+          itemCount={pendingConfirmationModal.itemCount}
+          onConfirm={confirmMarkPendingDone}
+          onCancel={() =>
+            setPendingConfirmationModal({ isOpen: false, itemCount: 0 })
+          }
+        />
       </div>
     </AdminLayout>
   )

@@ -43,6 +43,7 @@ function AccountDataPage() {
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const [initialHistoryLoading, setInitialHistoryLoading] = useState(false)
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedAdminItems, setSelectedAdminItems] = useState(new Set()); // Admin done checkbox state
 
   const { checklist, loading, history, hasMore, currentPage } = useSelector((state) => state.checkList);
   const dispatch = useDispatch();
@@ -357,6 +358,129 @@ function AccountDataPage() {
       console.error("Error marking tasks as done:", error);
       setSuccessMessage(`Failed to mark tasks as done: ${error.message}`);
     } finally {
+      setMarkingAsDone(false);
+    }
+  };
+
+  // Admin checkbox handlers for pending table
+  const handleAdminCheckboxClick = (id) => {
+    setSelectedAdminItems((prevSelected) => {
+      const newSelected = new Set(prevSelected);
+      if (newSelected.has(id)) {
+        newSelected.delete(id);
+      } else {
+        newSelected.add(id);
+      }
+      return newSelected;
+    });
+  };
+
+  const handleSelectAllAdminItems = () => {
+    if (selectedAdminItems.size === filteredAccountData.length) {
+      setSelectedAdminItems(new Set());
+    } else {
+      const allIds = new Set(filteredAccountData.map((item) => item.task_id));
+      setSelectedAdminItems(allIds);
+    }
+  };
+
+  const handleAdminMarkAsDone = async () => {
+    const selectedItemsArray = Array.from(selectedAdminItems);
+    if (selectedItemsArray.length === 0) {
+      alert("Please select at least one item to submit");
+      return;
+    }
+
+    // NEW: Check if all selected items have status selected
+    const missingStatus = selectedItemsArray.filter((id) => {
+      const status = additionalData[id];
+      return !status || status === ""; // Status is empty or not selected
+    });
+
+    if (missingStatus.length > 0) {
+      alert(`Please select status (yes/no) for all selected tasks. ${missingStatus.length} item(s) are missing status selection.\n\nकृपया सभी चयनित कार्यों के लिए स्थिति (हाँ/नहीं) चुनें। ${missingStatus.length} आइटम स्थिति चयन से छूट गए हैं।`);
+      return;
+    }
+
+    // Check for missing remarks (only for items with status "no")
+    const missingRemarks = selectedItemsArray.filter((id) => {
+      const additionalStatus = additionalData[id];
+      const remarks = remarksData[id];
+      return additionalStatus === "no" && (!remarks || remarks.trim() === "");
+    });
+
+    if (missingRemarks.length > 0) {
+      alert(`Please provide remarks for items marked as "no". ${missingRemarks.length} item(s) are missing remarks.\n\nकृपया "नहीं" चिह्नित आइटमों के लिए टिप्पणियाँ प्रदान करें। ${missingRemarks.length} आइटम टिप्पणियों से छूट गए हैं।`);
+      return;
+    }
+
+    // Check for missing required images (only if status is not "no")
+    const missingRequiredImages = selectedItemsArray.filter((id) => {
+      const item = checklist.find((account) => account.task_id === id);
+      const requiresAttachment = item.require_attachment && item.require_attachment.toUpperCase() === "yes";
+      const hasImage = uploadedImages[id] || item.image;
+      const statusIsNo = additionalData[id] === "no";
+
+      // Only require image if attachment is required AND status is not "no"
+      return requiresAttachment && !hasImage && !statusIsNo;
+    });
+
+    if (missingRequiredImages.length > 0) {
+      alert(
+        `Please upload images for all required attachments. ${missingRequiredImages.length} item(s) are missing required images.`,
+      );
+      return;
+    }
+
+    setMarkingAsDone(true);
+
+    // Prepare the submission data
+    const submissionData = selectedItemsArray.map((id) => {
+      const item = checklist.find((account) => account.task_id === id);
+      const imageData = uploadedImages[id];
+
+      return {
+        taskId: item.task_id,
+        department: item.department,
+        givenBy: item.given_by,
+        name: item.name,
+        taskDescription: item.task_description,
+        taskStartDate: item.task_start_date,
+        frequency: item.frequency,
+        enableReminder: item.enable_reminder,
+        requireAttachment: item.require_attachment,
+        status: additionalData[id] || "",
+        remarks: remarksData[id] || "",
+        image: imageData ? {
+          name: imageData.file.name,
+          type: imageData.file.type,
+          size: imageData.file.size,
+          previewUrl: imageData.previewUrl
+        } : item.image ? {
+          existingImage: typeof item.image === 'string' ? item.image : 'File object'
+        } : null
+      };
+    });
+
+    try {
+      console.log("Dispatching updateChecklist with data:", submissionData);
+      await dispatch(updateChecklist(submissionData)).unwrap();
+
+      setSuccessMessage(`Successfully updated ${selectedItemsArray.length} tasks!`);
+
+      // Clear selections after submission
+      setSelectedAdminItems(new Set());
+      setAdditionalData({});
+      setRemarksData({});
+      setUploadedImages({});
+
+      // Refresh the page after showing success message
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      console.error("Submission failed:", err);
+      alert(`Submission failed: ${err.message || 'Unknown error'}`);
       setMarkingAsDone(false);
     }
   };
@@ -710,30 +834,30 @@ function AccountDataPage() {
     });
 
     if (missingStatus.length > 0) {
-      alert(`Please select status (Yes/No) for all selected tasks. ${missingStatus.length} item(s) are missing status selection.\n\nकृपया सभी चयनित कार्यों के लिए स्थिति (हाँ/नहीं) चुनें। ${missingStatus.length} आइटम स्थिति चयन से छूट गए हैं।`);
+      alert(`Please select status (yes/no) for all selected tasks. ${missingStatus.length} item(s) are missing status selection.\n\nकृपया सभी चयनित कार्यों के लिए स्थिति (हाँ/नहीं) चुनें। ${missingStatus.length} आइटम स्थिति चयन से छूट गए हैं।`);
       return;
     }
 
-    // Check for missing remarks (only for items with status "No")
+    // Check for missing remarks (only for items with status "no")
     const missingRemarks = selectedItemsArray.filter((id) => {
       const additionalStatus = additionalData[id];
       const remarks = remarksData[id];
-      return additionalStatus === "No" && (!remarks || remarks.trim() === "");
+      return additionalStatus === "no" && (!remarks || remarks.trim() === "");
     });
 
     if (missingRemarks.length > 0) {
-      alert(`Please provide remarks for items marked as "No". ${missingRemarks.length} item(s) are missing remarks.\n\nकृपया "नहीं" चिह्नित आइटमों के लिए टिप्पणियाँ प्रदान करें। ${missingRemarks.length} आइटम टिप्पणियों से छूट गए हैं।`);
+      alert(`Please provide remarks for items marked as "no". ${missingRemarks.length} item(s) are missing remarks.\n\nकृपया "नहीं" चिह्नित आइटमों के लिए टिप्पणियाँ प्रदान करें। ${missingRemarks.length} आइटम टिप्पणियों से छूट गए हैं।`);
       return;
     }
 
-    // Check for missing required images (only if status is not "No")
+    // Check for missing required images (only if status is not "no")
     const missingRequiredImages = selectedItemsArray.filter((id) => {
       const item = checklist.find((account) => account.task_id === id);
-      const requiresAttachment = item.require_attachment && item.require_attachment.toUpperCase() === "YES";
+      const requiresAttachment = item.require_attachment && item.require_attachment.toUpperCase() === "yes";
       const hasImage = uploadedImages[id] || item.image;
-      const statusIsNo = additionalData[id] === "No";
+      const statusIsNo = additionalData[id] === "no";
 
-      // Only require image if attachment is required AND status is not "No"
+      // Only require image if attachment is required AND status is not "no"
       return requiresAttachment && !hasImage && !statusIsNo;
     });
 
@@ -774,13 +898,11 @@ function AccountDataPage() {
       };
     });
 
-    console.log("Submission Data:", submissionData);
-    await dispatch(updateChecklist(submissionData));
+    try {
+      console.log("Dispatching updateChecklist with data:", submissionData);
+      await dispatch(updateChecklist(submissionData)).unwrap();
 
-    // Simulate submission delay
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setSuccessMessage(`Successfully logged ${selectedItemsArray.length} task records to console!`);
+      setSuccessMessage(`Successfully updated ${selectedItemsArray.length} tasks!`);
 
       // Clear selections after submission
       setSelectedItems(new Set());
@@ -791,8 +913,12 @@ function AccountDataPage() {
       // Refresh the page after showing success message
       setTimeout(() => {
         window.location.reload();
-      }, 1000); // Refresh after 1 second (adjust as needed)
-    }, 1500);
+      }, 1500);
+    } catch (err) {
+      console.error("Submission failed:", err);
+      alert(`Submission failed: ${err.message || 'Unknown error'}`);
+      setIsSubmitting(false);
+    }
   };
 
   // Convert Set to Array for display
@@ -837,14 +963,29 @@ function AccountDataPage() {
               </button>
               {!showHistory && (
                 <button
-                  onClick={handleSubmit}
-                  disabled={selectedItemsCount === 0 || isSubmitting}
-                  className="flex-1 sm:flex-none rounded-md gradient-bg py-2 px-3 sm:px-4 text-white hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                  onClick={userRole === "admin" ? handleAdminMarkAsDone : handleSubmit}
+                  disabled={
+                    (userRole === "admin"
+                      ? selectedAdminItems.size === 0
+                      : selectedItemsCount === 0) ||
+                    isSubmitting ||
+                    markingAsDone ||
+                    (userRole === "admin" &&
+                     Array.from(selectedAdminItems).some(id => !additionalData[id] || additionalData[id] === ""))
+                  }
+                  className={`flex-1 sm:flex-none rounded-md py-2 px-3 sm:px-4 text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base ${userRole === "admin"
+                    ? "bg-green-600 hover:bg-green-700 focus:ring-green-500"
+                    : "gradient-bg hover:from-purple-700 hover:to-pink-700 focus:ring-purple-500"
+                    }`}
                 >
-                  {isSubmitting ? "Processing..." : (
+                  {(userRole === "admin" ? markingAsDone : isSubmitting) ? "Processing..." : (
                     <>
-                      <span className="hidden sm:inline">Submit Selected ({selectedItemsCount})</span>
-                      <span className="sm:hidden">Submit ({selectedItemsCount})</span>
+                      <span className="hidden sm:inline">
+                        {userRole === "admin" ? "Submit Selected" : "Submit Selected"} ({userRole === "admin" ? selectedAdminItems.size : selectedItemsCount})
+                      </span>
+                      <span className="sm:hidden">
+                        Submit ({userRole === "admin" ? selectedAdminItems.size : selectedItemsCount})
+                      </span>
                     </>
                   )}
                 </button>
@@ -1153,9 +1294,9 @@ function AccountDataPage() {
                               </td>
                               <td className="px-2 sm:px-3 py-2 sm:py-4 bg-blue-50">
                                 <span
-                                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full break-words ${history.status === "Yes"
+                                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full break-words ${history.status === "yes"
                                     ? "bg-green-100 text-green-800"
-                                    : history.status === "No"
+                                    : history.status === "no"
                                       ? "bg-red-100 text-red-800"
                                       : "bg-gray-100 text-gray-800"
                                     }`}
@@ -1184,7 +1325,7 @@ function AccountDataPage() {
                                     <span className="break-words">View</span>
                                   </a>
                                 ) : (
-                                  <span className="text-gray-400 text-xs sm:text-sm">No file</span>
+                                  <span className="text-gray-400 text-xs sm:text-sm">no file</span>
                                 )}
                               </td>
 
@@ -1194,8 +1335,8 @@ function AccountDataPage() {
                           <tr>
                             <td colSpan={userRole === "admin" ? 15 : 13} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                               {searchTerm || selectedMembers.length > 0 || startDate || endDate
-                                ? "No historical records matching your filters"
-                                : "No completed records found"}
+                                ? "no historical records matching your filters"
+                                : "no completed records found"}
                             </td>
                           </tr>
                         )}
@@ -1213,7 +1354,7 @@ function AccountDataPage() {
 
                     {!hasMoreHistory && history.length > 0 && (
                       <div className="text-center py-4 text-gray-500 text-xs sm:text-sm">
-                        No more history to load
+                        no more history to load
                       </div>
                     )}
                   </>
@@ -1231,15 +1372,20 @@ function AccountDataPage() {
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
                     <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap w-16">
-                      Seq. No.
+                      Seq. no.
                     </th>
-                    {userRole === "user" && (
+                    {(userRole === "user" || userRole === "admin") && (
                       <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
                         <input
                           type="checkbox"
                           className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                          checked={filteredAccountData.length > 0 && selectedItems.size === filteredAccountData.length}
-
+                          checked={
+                            filteredAccountData.length > 0 &&
+                            (userRole === "user"
+                              ? selectedItems.size === filteredAccountData.length
+                              : selectedAdminItems.size === filteredAccountData.length)
+                          }
+                          onChange={userRole === "user" ? handleSelectAllItems : handleSelectAllAdminItems}
                         />
                       </th>
                     )}
@@ -1284,7 +1430,9 @@ function AccountDataPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredAccountData.length > 0 ? (
                     filteredAccountData.map((account, index) => {
-                      const isSelected = selectedItems.has(account.task_id);
+                      const isSelected = userRole === "user"
+                        ? selectedItems.has(account.task_id)
+                        : selectedAdminItems.has(account.task_id);
                       const sequenceNumber = index + 1;
                       return (
                         <tr key={index} className={`${isSelected ? "bg-purple-50" : ""} hover:bg-gray-50`}>
@@ -1293,13 +1441,17 @@ function AccountDataPage() {
                               {sequenceNumber}
                             </div>
                           </td>
-                          {userRole === "user" && (
+                          {(userRole === "user" || userRole === "admin") && (
                             <td className="px-2 sm:px-3 py-2 sm:py-4 w-12">
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                                 checked={isSelected}
-                                onChange={(e) => handleCheckboxClick(e, account.task_id)}
+                                onChange={(e) =>
+                                  userRole === "user"
+                                    ? handleCheckboxClick(e, account.task_id)
+                                    : handleAdminCheckboxClick(account.task_id)
+                                }
                               />
                             </td>
                           )}
@@ -1360,7 +1512,7 @@ function AccountDataPage() {
                               value={additionalData[account.task_id] || ""}
                               onChange={(e) => {
                                 setAdditionalData((prev) => ({ ...prev, [account.task_id]: e.target.value }));
-                                if (e.target.value !== "No") {
+                                if (e.target.value !== "no") {
                                   setRemarksData((prev) => {
                                     const newData = { ...prev };
                                     delete newData[account.task_id];
@@ -1371,8 +1523,8 @@ function AccountDataPage() {
                               className="border border-gray-300 rounded-md px-2 py-1 w-full disabled:bg-gray-100 disabled:cursor-not-allowed text-xs sm:text-sm"
                             >
                               <option value="">Select...</option>
-                              <option value="Yes">Yes</option>
-                              <option value="No">No</option>
+                              <option value="yes">yes</option>
+                              <option value="no">no</option>
                             </select>
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-4 bg-orange-50 min-w-[120px]">
@@ -1415,16 +1567,16 @@ function AccountDataPage() {
                               </div>
                             ) : (
                               <label
-                                className={`flex items-center cursor-pointer ${account.require_attachment?.toUpperCase() === "YES" &&
-                                  additionalData[account.task_id] !== "No" // Only show as required if status is not "No"
+                                className={`flex items-center cursor-pointer ${account.require_attachment?.toUpperCase() === "yes" &&
+                                  additionalData[account.task_id] !== "no" // Only show as required if status is not "no"
                                   ? "text-red-600 font-medium"
                                   : "text-purple-600"
                                   } hover:text-purple-800`}
                               >
                                 <Upload className="h-4 w-4 mr-1 flex-shrink-0" />
                                 <span className="text-xs break-words">
-                                  {account.require_attachment?.toUpperCase() === "YES" &&
-                                    additionalData[account.task_id] !== "No"
+                                  {account.require_attachment?.toUpperCase() === "yes" &&
+                                    additionalData[account.task_id] !== "no"
                                     ? "Required*"
                                     : "Upload"}
                                 </span>
@@ -1445,8 +1597,8 @@ function AccountDataPage() {
                     <tr>
                       <td colSpan={13} className="px-4 sm:px-6 py-4 text-center text-gray-500 text-xs sm:text-sm">
                         {searchTerm
-                          ? "No tasks matching your search"
-                          : "No pending tasks found for today, tomorrow, or past due dates"}
+                          ? "no tasks matching your search"
+                          : "no pending tasks found for today, tomorrow, or past due dates"}
                       </td>
                     </tr>
                   )}
@@ -1464,14 +1616,14 @@ function AccountDataPage() {
 
               {!hasMore && checklist.length > 0 && (
                 <div className="text-center py-4 text-gray-500 text-xs sm:text-sm">
-                  No more tasks to load
+                  no more tasks to load
                 </div>
               )}
             </div>
           )}
         </div>
       </div>
-    </AdminLayout>
+    </AdminLayout >
   );
 }
 

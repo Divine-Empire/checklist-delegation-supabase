@@ -21,9 +21,9 @@ export const checklistData = createAsyncThunk(
 
 
 
-export const checklistAdminDone=createAsyncThunk( 'insert/admin_done',async () => {
+export const checklistAdminDone = createAsyncThunk('insert/admin_done', async () => {
   const admin_done = await postChecklistAdminDoneAPI();
- 
+
   return admin_done;
 }
 );
@@ -41,25 +41,25 @@ export const updateChecklist = createAsyncThunk(
 
 const checkListSlice = createSlice({
   name: 'checklist',
- 
+
   initialState: {
     checklist: [],
-    history:[],
+    history: [],
     error: null,
     loading: false,
-   
+
   },
   reducers: {},
   extraReducers: (builder) => {
     builder
-   
+
       .addCase(checklistData.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(checklistData.fulfilled, (state, action) => {
         state.loading = false;
-        
+
         // If it's the first page, replace the data
         if (action.payload.page === 1) {
           state.checklist = action.payload.data;
@@ -67,9 +67,9 @@ const checkListSlice = createSlice({
           // Otherwise, append to existing data
           state.checklist = [...state.checklist, ...action.payload.data];
         }
-        
+
         state.currentPage = action.payload.page;
-        
+
         // Calculate if there are more pages
         const itemsPerPage = 50;
         state.hasMore = state.checklist.length < action.payload.totalCount;
@@ -78,33 +78,33 @@ const checkListSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-         .addCase(updateChecklist.pending, (state) => {
+      .addCase(updateChecklist.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(updateChecklist.fulfilled, (state, action) => {
         state.loading = false;
-        state.checklist=action.payload;
+        state.checklist = action.payload;
       })
       .addCase(updateChecklist.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-         .addCase(checklistHistoryData.pending, (state) => {
+      .addCase(checklistHistoryData.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-     .addCase(checklistHistoryData.fulfilled, (state, action) => {
-  state.loading = false;
-  
-  // If it's the first page, replace the data
-  if (action.payload.page === 1) {
-    state.history = action.payload.data;
-  } else {
-    // Otherwise, append to existing data
-    state.history = [...state.history, ...action.payload.data];
-  }
-})
+      .addCase(checklistHistoryData.fulfilled, (state, action) => {
+        state.loading = false;
+
+        // If it's the first page, replace the data
+        if (action.payload.page === 1) {
+          state.history = action.payload.data;
+        } else {
+          // Otherwise, append to existing data
+          state.history = [...state.history, ...action.payload.data];
+        }
+      })
       .addCase(checklistHistoryData.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
@@ -121,7 +121,7 @@ const checkListSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       });
-     
+
   },
 });
 

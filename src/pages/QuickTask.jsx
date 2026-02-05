@@ -5,7 +5,7 @@ import { Search, ChevronDown, Filter, Trash2, Edit, Save, X } from "lucide-react
 import AdminLayout from "../components/layout/AdminLayout";
 import DelegationPage from "./delegation-data";
 import { useDispatch, useSelector } from "react-redux";
-import { deleteChecklistTask, uniqueChecklistTaskData, uniqueDelegationTaskData, updateChecklistTask, fetchUsers, resetChecklistPagination, resetDelegationPagination  } from "../redux/slice/quickTaskSlice";
+import { deleteChecklistTask, uniqueChecklistTaskData, uniqueDelegationTaskData, updateChecklistTask, fetchUsers, resetChecklistPagination, resetDelegationPagination } from "../redux/slice/quickTaskSlice";
 
 
 export default function QuickTask() {
@@ -17,7 +17,7 @@ export default function QuickTask() {
   const [activeTab, setActiveTab] = useState('checklist');
   const [nameFilter, setNameFilter] = useState('');
   const [freqFilter, setFreqFilter] = useState('');
-    const tableContainerRef = useRef(null);
+  const tableContainerRef = useRef(null);
   const [dropdownOpen, setDropdownOpen] = useState({
     name: false,
     frequency: false
@@ -29,10 +29,10 @@ export default function QuickTask() {
   const [isSaving, setIsSaving] = useState(false);
 
   // const { quickTask, loading, delegationTasks, users } = useSelector((state) => state.quickTask);
-  const { 
-    quickTask, 
-    loading, 
-    delegationTasks, 
+  const {
+    quickTask,
+    loading,
+    delegationTasks,
     users,                    // Add this
     checklistPage,            // Add this
     checklistHasMore,         // Add this
@@ -41,47 +41,55 @@ export default function QuickTask() {
   } = useSelector((state) => state.quickTask);
   const dispatch = useDispatch();
 
-useEffect(() => {
-  dispatch(fetchUsers());
-  dispatch(resetChecklistPagination());
-  dispatch(uniqueChecklistTaskData({ page: 0, pageSize: 50, nameFilter: '' }));
-}, [dispatch]);
+  // Retrieve user role
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    const role = localStorage.getItem("role");
+    setUserRole(role || "");
+  }, []);
+
+  useEffect(() => {
+    dispatch(fetchUsers());
+    dispatch(resetChecklistPagination());
+    dispatch(uniqueChecklistTaskData({ page: 0, pageSize: 50, nameFilter: '' }));
+  }, [dispatch]);
 
 
-// Add this new function
-const handleScroll = useCallback(() => {
-  if (!tableContainerRef.current || loading) return;
+  // Add this new function
+  const handleScroll = useCallback(() => {
+    if (!tableContainerRef.current || loading) return;
 
-  const { scrollTop, scrollHeight, clientHeight } = tableContainerRef.current;
-  
-  // Check if scrolled near bottom (within 100px)
-  if (scrollHeight - scrollTop - clientHeight < 100) {
-    if (activeTab === 'checklist' && checklistHasMore) {
-      dispatch(uniqueChecklistTaskData({ 
-        page: checklistPage, 
-        pageSize: 50, 
-        nameFilter,
-        append: true 
-      }));
-    } else if (activeTab === 'delegation' && delegationHasMore) {
-      dispatch(uniqueDelegationTaskData({ 
-        page: delegationPage, 
-        pageSize: 50, 
-        nameFilter,
-        append: true 
-      }));
+    const { scrollTop, scrollHeight, clientHeight } = tableContainerRef.current;
+
+    // Check if scrolled near bottom (within 100px)
+    if (scrollHeight - scrollTop - clientHeight < 100) {
+      if (activeTab === 'checklist' && checklistHasMore) {
+        dispatch(uniqueChecklistTaskData({
+          page: checklistPage,
+          pageSize: 50,
+          nameFilter,
+          append: true
+        }));
+      } else if (activeTab === 'delegation' && delegationHasMore) {
+        dispatch(uniqueDelegationTaskData({
+          page: delegationPage,
+          pageSize: 50,
+          nameFilter,
+          append: true
+        }));
+      }
     }
-  }
-}, [loading, activeTab, checklistHasMore, delegationHasMore, checklistPage, delegationPage, nameFilter, dispatch]);
+  }, [loading, activeTab, checklistHasMore, delegationHasMore, checklistPage, delegationPage, nameFilter, dispatch]);
 
-// Add scroll listener
-useEffect(() => {
-  const container = tableContainerRef.current;
-  if (container) {
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }
-}, [handleScroll]);
+  // Add scroll listener
+  useEffect(() => {
+    const container = tableContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [handleScroll]);
 
   // Edit functionality
   const handleEditClick = (task) => {
@@ -179,6 +187,21 @@ useEffect(() => {
     }
   };
 
+  // Delete Single Task
+  const handleDeleteTask = async (task) => {
+    if (!window.confirm("Are you sure you want to delete this task?")) return;
+
+    setIsDeleting(true);
+    try {
+      await dispatch(deleteChecklistTask([task])).unwrap();
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+      setError("Failed to delete task");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const CONFIG = {
     APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbzXzqnKmbeXw3i6kySQcBOwxHQA7y8WBFfEe69MPbCR-jux0Zte7-TeSKi8P4CIFkhE/exec",
     SHEET_NAME: "Unique task",
@@ -215,58 +238,58 @@ useEffect(() => {
     }));
   };
 
-const handleNameFilterSelect = (name) => {
-  setNameFilter(name);
-  
-  if (activeTab === 'checklist') {
-    dispatch(resetChecklistPagination());
-    dispatch(uniqueChecklistTaskData({ 
-      page: 0, 
-      pageSize: 50, 
-      nameFilter: name,
-      append: false 
-    }));
-  } else {
-    dispatch(resetDelegationPagination());
-    dispatch(uniqueDelegationTaskData({ 
-      page: 0, 
-      pageSize: 50, 
-      nameFilter: name,
-      append: false 
-    }));
-  }
-  
-  setDropdownOpen({ ...dropdownOpen, name: false });
-};
+  const handleNameFilterSelect = (name) => {
+    setNameFilter(name);
+
+    if (activeTab === 'checklist') {
+      dispatch(resetChecklistPagination());
+      dispatch(uniqueChecklistTaskData({
+        page: 0,
+        pageSize: 50,
+        nameFilter: name,
+        append: false
+      }));
+    } else {
+      dispatch(resetDelegationPagination());
+      dispatch(uniqueDelegationTaskData({
+        page: 0,
+        pageSize: 50,
+        nameFilter: name,
+        append: false
+      }));
+    }
+
+    setDropdownOpen({ ...dropdownOpen, name: false });
+  };
 
   const handleFrequencyFilterSelect = (freq) => {
     setFreqFilter(freq);
     setDropdownOpen({ ...dropdownOpen, frequency: false });
   };
 
-const clearNameFilter = () => {
-  setNameFilter('');
-  
-  if (activeTab === 'checklist') {
-    dispatch(resetChecklistPagination());
-    dispatch(uniqueChecklistTaskData({ 
-      page: 0, 
-      pageSize: 50, 
-      nameFilter: '',
-      append: false 
-    }));
-  } else {
-    dispatch(resetDelegationPagination());
-    dispatch(uniqueDelegationTaskData({ 
-      page: 0, 
-      pageSize: 50, 
-      nameFilter: '',
-      append: false 
-    }));
-  }
-  
-  setDropdownOpen({ ...dropdownOpen, name: false });
-};
+  const clearNameFilter = () => {
+    setNameFilter('');
+
+    if (activeTab === 'checklist') {
+      dispatch(resetChecklistPagination());
+      dispatch(uniqueChecklistTaskData({
+        page: 0,
+        pageSize: 50,
+        nameFilter: '',
+        append: false
+      }));
+    } else {
+      dispatch(resetDelegationPagination());
+      dispatch(uniqueDelegationTaskData({
+        page: 0,
+        pageSize: 50,
+        nameFilter: '',
+        append: false
+      }));
+    }
+
+    setDropdownOpen({ ...dropdownOpen, name: false });
+  };
 
   const clearFrequencyFilter = () => {
     setFreqFilter('');
@@ -274,10 +297,10 @@ const clearNameFilter = () => {
   };
 
   // FIXED: Added proper null/undefined checks and string validation
-const allNames = [
-  ...new Set(users.map(user => user.user_name))
-].filter(name => name && typeof name === 'string' && name.trim() !== '')
- .sort();
+  const allNames = [
+    ...new Set(users.map(user => user.user_name))
+  ].filter(name => name && typeof name === 'string' && name.trim() !== '')
+    .sort();
 
   // Keep allFrequencies as is (or modify if you want to fetch frequencies from elsewhere)
   const allFrequencies = [
@@ -288,22 +311,22 @@ const allNames = [
   ].filter(frequency => frequency && typeof frequency === 'string' && frequency.trim() !== '');
 
 
-const filteredChecklistTasks = quickTask.filter(task => {
-  const freqFilterPass = !freqFilter || task.frequency === freqFilter;
-  const searchTermPass = !searchTerm || task.task_description
-    ?.toLowerCase()
-    .includes(searchTerm.toLowerCase());
-  return freqFilterPass && searchTermPass;  // Only these two filters
-}).sort((a, b) => {
-  if (!sortConfig.key) return 0;
-  if (a[sortConfig.key] < b[sortConfig.key]) {
-    return sortConfig.direction === 'asc' ? -1 : 1;
-  }
-  if (a[sortConfig.key] > b[sortConfig.key]) {
-    return sortConfig.direction === 'asc' ? 1 : -1;
-  }
-  return 0;
-});
+  const filteredChecklistTasks = quickTask.filter(task => {
+    const freqFilterPass = !freqFilter || task.frequency === freqFilter;
+    const searchTermPass = !searchTerm || task.task_description
+      ?.toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    return freqFilterPass && searchTermPass;  // Only these two filters
+  }).sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    if (a[sortConfig.key] < b[sortConfig.key]) {
+      return sortConfig.direction === 'asc' ? -1 : 1;
+    }
+    if (a[sortConfig.key] > b[sortConfig.key]) {
+      return sortConfig.direction === 'asc' ? 1 : -1;
+    }
+    return 0;
+  });
 
   function formatTimestampToDDMMYYYY(timestamp) {
     if (!timestamp || timestamp === "" || timestamp === null) {
@@ -339,24 +362,24 @@ const filteredChecklistTasks = quickTask.filter(task => {
 
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <div className="flex border border-purple-200 rounded-md overflow-hidden self-start">
-             <button
-  className={`px-4 py-2 text-sm font-medium ${activeTab === 'checklist' ? 'bg-purple-600 text-white' : 'bg-white text-purple-600 hover:bg-purple-50'}`}
-  onClick={() => {
-    setActiveTab('checklist');
-    dispatch(resetChecklistPagination());
-    dispatch(uniqueChecklistTaskData({ page: 0, pageSize: 50, nameFilter }));
-  }}
->
+              <button
+                className={`px-4 py-2 text-sm font-medium ${activeTab === 'checklist' ? 'bg-purple-600 text-white' : 'bg-white text-purple-600 hover:bg-purple-50'}`}
+                onClick={() => {
+                  setActiveTab('checklist');
+                  dispatch(resetChecklistPagination());
+                  dispatch(uniqueChecklistTaskData({ page: 0, pageSize: 50, nameFilter }));
+                }}
+              >
                 Checklist
               </button>
               <button
-  className={`px-4 py-2 text-sm font-medium ${activeTab === 'delegation' ? 'bg-purple-600 text-white' : 'bg-white text-purple-600 hover:bg-purple-50'}`}
-  onClick={() => {
-    setActiveTab('delegation');
-    dispatch(resetDelegationPagination());
-    dispatch(uniqueDelegationTaskData({ page: 0, pageSize: 50, nameFilter }));
-  }}
->
+                className={`px-4 py-2 text-sm font-medium ${activeTab === 'delegation' ? 'bg-purple-600 text-white' : 'bg-white text-purple-600 hover:bg-purple-50'}`}
+                onClick={() => {
+                  setActiveTab('delegation');
+                  dispatch(resetDelegationPagination());
+                  dispatch(uniqueDelegationTaskData({ page: 0, pageSize: 50, nameFilter }));
+                }}
+              >
                 Delegation
               </button>
             </div>
@@ -377,65 +400,65 @@ const filteredChecklistTasks = quickTask.filter(task => {
               <div className="relative">
                 <div className="flex items-center gap-2">
                   {/* Input with datalist for autocomplete */}
-                 <div className="relative">
-  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-  <input
-    type="text"
-    list="nameOptions"
-    placeholder="Type or select name..."
-    value={nameFilter}
-    onChange={(e) => {
-      const typedName = e.target.value;
-      setNameFilter(typedName); // Always update the input value
-      
-      // Only trigger DB fetch if the value is empty or matches a name in the list
-      if (typedName === '') {
-        clearNameFilter();
-      } else if (allNames.includes(typedName)) {
-        handleNameFilterSelect(typedName);
-      }
-    }}
-    onBlur={(e) => {
-      // When input loses focus, if the typed value doesn't match any name, clear it
-      const typedName = e.target.value;
-      if (typedName && !allNames.includes(typedName)) {
-        // Optional: You can either clear it or keep it for manual filtering
-        // setNameFilter('');
-        // clearNameFilter();
-      }
-    }}
-    onKeyDown={(e) => {
-      // Allow pressing Enter to apply the filter even if not exact match
-      if (e.key === 'Enter') {
-        if (nameFilter === '') {
-          clearNameFilter();
-        } else {
-          // Apply the filter with whatever is typed
-          handleNameFilterSelect(nameFilter);
-        }
-      }
-    }}
-    className="w-48 pl-10 pr-4 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-  />
-  <datalist id="nameOptions">
-    {allNames.map(name => (
-      <option key={name} value={name} />
-    ))}
-  </datalist>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                    <input
+                      type="text"
+                      list="nameOptions"
+                      placeholder="Type or select name..."
+                      value={nameFilter}
+                      onChange={(e) => {
+                        const typedName = e.target.value;
+                        setNameFilter(typedName); // Always update the input value
 
-  {/* Clear button for input */}
-  {nameFilter && (
-    <button
-      onClick={() => {
-        setNameFilter('');
-        clearNameFilter();
-      }}
-      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-    >
-      <X size={16} />
-    </button>
-  )}
-</div>
+                        // Only trigger DB fetch if the value is empty or matches a name in the list
+                        if (typedName === '') {
+                          clearNameFilter();
+                        } else if (allNames.includes(typedName)) {
+                          handleNameFilterSelect(typedName);
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // When input loses focus, if the typed value doesn't match any name, clear it
+                        const typedName = e.target.value;
+                        if (typedName && !allNames.includes(typedName)) {
+                          // Optional: You can either clear it or keep it for manual filtering
+                          // setNameFilter('');
+                          // clearNameFilter();
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        // Allow pressing Enter to apply the filter even if not exact match
+                        if (e.key === 'Enter') {
+                          if (nameFilter === '') {
+                            clearNameFilter();
+                          } else {
+                            // Apply the filter with whatever is typed
+                            handleNameFilterSelect(nameFilter);
+                          }
+                        }
+                      }}
+                      className="w-48 pl-10 pr-4 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    />
+                    <datalist id="nameOptions">
+                      {allNames.map(name => (
+                        <option key={name} value={name} />
+                      ))}
+                    </datalist>
+
+                    {/* Clear button for input */}
+                    {nameFilter && (
+                      <button
+                        onClick={() => {
+                          setNameFilter('');
+                          clearNameFilter();
+                        }}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
 
                   {/* Dropdown button */}
                   <button
@@ -505,7 +528,7 @@ const filteredChecklistTasks = quickTask.filter(task => {
                 )}
               </div>
             </div>
-            {selectedTasks.length > 0 && activeTab === 'checklist' && (
+            {userRole === 'admin' && selectedTasks.length > 0 && activeTab === 'checklist' && (
               <button
                 onClick={handleDeleteSelected}
                 disabled={isDeleting}
@@ -558,22 +581,24 @@ const filteredChecklistTasks = quickTask.filter(task => {
                 )}
               </div>
               {/* <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}> */}
-<div 
-  ref={tableContainerRef}
-  className="overflow-x-auto overflow-y-auto" 
-  style={{ maxHeight: 'calc(100vh - 220px)' }}
->
+              <div
+                ref={tableContainerRef}
+                className="overflow-x-auto overflow-y-auto"
+                style={{ maxHeight: 'calc(100vh - 220px)' }}
+              >
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 sticky top-0 z-20">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
-                        <input
-                          type="checkbox"
-                          checked={selectedTasks.length === filteredChecklistTasks.length && filteredChecklistTasks.length > 0}
-                          onChange={handleSelectAll}
-                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                        />
-                      </th>
+                      {userRole === 'admin' && (
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                          <input
+                            type="checkbox"
+                            checked={selectedTasks.length === filteredChecklistTasks.length && filteredChecklistTasks.length > 0}
+                            onChange={handleSelectAll}
+                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                        </th>
+                      )}
                       {[
                         { key: 'department', label: 'Department' },
                         { key: 'given_by', label: 'Given By' },
@@ -608,14 +633,16 @@ const filteredChecklistTasks = quickTask.filter(task => {
                     {filteredChecklistTasks.length > 0 ? (
                       filteredChecklistTasks.map((task, index) => (
                         <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <input
-                              type="checkbox"
-                              checked={selectedTasks.includes(task)}
-                              onChange={() => handleCheckboxChange(task)}
-                              className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                            />
-                          </td>
+                          {userRole === 'admin' && (
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <input
+                                type="checkbox"
+                                checked={selectedTasks.includes(task)}
+                                onChange={() => handleCheckboxChange(task)}
+                                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                              />
+                            </td>
+                          )}
 
                           {/* Department */}
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -799,11 +826,11 @@ const filteredChecklistTasks = quickTask.filter(task => {
                   </tbody>
                 </table>
                 {loading && checklistHasMore && (
-                <div className="text-center py-4">
-                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
-                  <p className="text-purple-600 text-sm mt-2">Loading more tasks...</p>
-                </div>
-              )}
+                  <div className="text-center py-4">
+                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
+                    <p className="text-purple-600 text-sm mt-2">Loading more tasks...</p>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -816,7 +843,8 @@ const filteredChecklistTasks = quickTask.filter(task => {
             />
           )}
         </>
-      )}
-    </AdminLayout>
+      )
+      }
+    </AdminLayout >
   );
 }
