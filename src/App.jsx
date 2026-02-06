@@ -15,6 +15,11 @@ import Demo from "./pages/user/Demo"
 import Setting from "./pages/Setting"
 import MisReport from "./pages/MisReport"
 import RealtimeLogoutListener from "./components/RealtimeLogoutListener"   // ✅ Added listener
+import Approval from "./pages/admin/Approval"
+import License from "./pages/License"
+import TrainingVideo from "./pages/TrainingVideo"
+import HolidayList from "./pages/HolidayList"
+import Calendar from "./pages/Calendar"
 
 // Auth wrapper component to protect routes
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -107,10 +112,51 @@ function App() {
         />
 
         <Route
+          path="/dashboard/approval"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Approval />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/dashboard/mis-report"
           element={
             <ProtectedRoute>
               <MisReport />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/holiday-list"
+          element={
+            <ProtectedRoute>
+              <HolidayList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/calendar"
+          element={
+            <ProtectedRoute>
+              <Calendar />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/license"
+          element={
+            <ProtectedRoute>
+              <License />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/training-video"
+          element={
+            <ProtectedRoute>
+              <TrainingVideo />
             </ProtectedRoute>
           }
         />

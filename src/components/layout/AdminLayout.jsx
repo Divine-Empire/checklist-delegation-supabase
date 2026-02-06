@@ -68,8 +68,15 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
     {
       href: "/dashboard/admin",
       label: "Dashboard",
-      icon: Database,
+      icon: Home,
       active: location.pathname === "/dashboard/admin",
+      showFor: ["admin", "user"],
+    },
+    {
+      href: "/dashboard/assign-task",
+      label: "Assign Task",
+      icon: CheckSquare,
+      active: location.pathname === "/dashboard/assign-task",
       showFor: ["admin", "user"],
     },
     {
@@ -80,13 +87,6 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       showFor: ["admin"],
     },
     {
-      href: "/dashboard/assign-task",
-      label: "Assign Task",
-      icon: CheckSquare,
-      active: location.pathname === "/dashboard/assign-task",
-      showFor: ["admin", "user"],
-    },
-    {
       href: "/dashboard/delegation",
       label: "Delegation",
       icon: ClipboardList,
@@ -94,12 +94,18 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       showFor: ["admin", "user"],
     },
     {
-      href: "#",
-      label: "Data",
+      href: "/dashboard/data/sales",
+      label: "Checklist",
       icon: Database,
-      active: location.pathname.includes("/dashboard/data"),
-      submenu: true,
+      active: location.pathname === "/dashboard/data/sales",
       showFor: ["admin", "user"],
+    },
+    {
+      href: "/dashboard/approval",
+      label: "Admin Approvals",
+      icon: CheckSquare,
+      active: location.pathname.includes("/dashboard/approval"),
+      showFor: ["admin"],
     },
     // {
     //   href: "/dashboard/mis-report",
@@ -109,11 +115,39 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
     //   showFor: ["admin"],
     // },
     {
+      href: "/dashboard/calendar",
+      label: "Calendar",
+      icon: CheckSquare,
+      active: location.pathname.includes("/dashboard/calendar"),
+      showFor: ["admin", "user"],
+    },
+    {
+      href: "/dashboard/holiday-list",
+      label: "Holiday List",
+      icon: CheckSquare,
+      active: location.pathname.includes("/dashboard/holiday-list"),
+      showFor: ["admin"],
+    },
+    {
       href: "/dashboard/setting",
       label: "Settings",
       icon: Settings,
       active: location.pathname.includes("/dashboard/setting"),
       showFor: ["admin"],
+    },
+    {
+      href: "/dashboard/license",
+      label: "License",
+      icon: CheckSquare,
+      active: location.pathname.includes("/dashboard/license"),
+      showFor: ["admin", "user"],
+    },
+    {
+      href: "/dashboard/training-video",
+      label: "Training Video",
+      icon: CheckSquare,
+      active: location.pathname.includes("/dashboard/training-video"),
+      showFor: ["admin", "user"],
     },
   ];
 
@@ -162,9 +196,9 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
         <nav className="flex-1 overflow-y-auto p-2">
           <ul className="space-y-1">
             {accessibleRoutes.map((route) => (
-              <li key={route.label}>
+              <li key={`${route.label}-${route.href}`}>
                 {route.submenu ? (
-                  <div>
+                  <div className="mb-1">
                     <button
                       onClick={() => setIsDataSubmenuOpen(!isDataSubmenuOpen)}
                       className={`flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${route.active
@@ -177,13 +211,15 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                           className={`h-4 w-4 ${route.active ? "text-blue-600" : ""
                             }`}
                         />
-                        {route.label}
+                        <span className="font-medium">{route.label}</span>
                       </div>
-                      {isDataSubmenuOpen ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
+                      <div className="flex items-center">
+                        {isDataSubmenuOpen ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </div>
                     </button>
                     {isDataSubmenuOpen && (
                       <ul className="mt-1 ml-6 space-y-1 border-l border-blue-100 pl-2">
@@ -202,6 +238,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                                 }`}
                               onClick={() => setIsMobileMenuOpen(false)}
                             >
+                              <Database className="h-3 w-3 text-gray-500" />
                               {category.name}
                             </Link>
                           </li>
@@ -213,15 +250,15 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                   <Link
                     to={route.href}
                     className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${route.active
-                      ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700"
-                      : "text-gray-700 hover:bg-blue-50"
+                      ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 border-l-4 border-blue-500"
+                      : "text-gray-700 hover:bg-blue-50 hover:border-l-4 hover:border-blue-300"
                       }`}
                   >
                     <route.icon
                       className={`h-4 w-4 ${route.active ? "text-blue-600" : ""
                         }`}
                     />
-                    {route.label}
+                    <span>{route.label}</span>
                   </Link>
                 )}
               </li>
@@ -282,7 +319,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                        d="M20.354 15.354A9 9 0 018.646 3.600 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
                       />
                     </svg>
                   )}
@@ -297,7 +334,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
             <div className="mt-2 flex justify-center">
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-1 text-blue-700 hover:text-blue-900 px-2 py-1 rounded hover:bg-blue-100 text-sm"
+                className="flex items-center gap-1 text-blue-700 hover:text-blue-900 px-3 py-1.5 rounded-md hover:bg-blue-100 text-sm font-medium transition-colors"
               >
                 <LogOut className="h-4 w-4" />
                 <span>Logout</span>
@@ -337,9 +374,9 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
             <nav className="flex-1 overflow-y-auto p-2 bg-white">
               <ul className="space-y-1">
                 {accessibleRoutes.map((route) => (
-                  <li key={route.label}>
+                  <li key={`${route.label}-${route.href}`}>
                     {route.submenu ? (
-                      <div>
+                      <div className="mb-1">
                         <button
                           onClick={() =>
                             setIsDataSubmenuOpen(!isDataSubmenuOpen)
@@ -354,13 +391,15 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                               className={`h-4 w-4 ${route.active ? "text-blue-600" : ""
                                 }`}
                             />
-                            {route.label}
+                            <span className="font-medium">{route.label}</span>
                           </div>
-                          {isDataSubmenuOpen ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
+                          <div className="flex items-center">
+                            {isDataSubmenuOpen ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </div>
                         </button>
                         {isDataSubmenuOpen && (
                           <ul className="mt-1 ml-6 space-y-1 border-l border-blue-100 pl-2">
@@ -379,6 +418,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                                     }`}
                                   onClick={() => setIsMobileMenuOpen(false)}
                                 >
+                                  <Database className="h-3 w-3 text-gray-500" />
                                   {category.name}
                                 </Link>
                               </li>
@@ -390,8 +430,8 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                       <Link
                         to={route.href}
                         className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${route.active
-                          ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700"
-                          : "text-gray-700 hover:bg-blue-50"
+                          ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 border-l-4 border-blue-500"
+                          : "text-gray-700 hover:bg-blue-50 hover:border-l-4 hover:border-blue-300"
                           }`}
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
@@ -399,7 +439,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                           className={`h-4 w-4 ${route.active ? "text-blue-600" : ""
                             }`}
                         />
-                        {route.label}
+                        <span>{route.label}</span>
                       </Link>
                     )}
                   </li>
@@ -457,7 +497,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M20.354 15.354A9 9 0 018.646 3.646A9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                            d="M20.354 15.354A9 9 0 018.646 3.600 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
                           />
                         </svg>
                       )}
@@ -472,7 +512,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
               <div className="mt-2 flex justify-center">
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-1 text-blue-700 hover:text-blue-900 px-2 py-1 rounded hover:bg-blue-100 text-sm"
+                  className="flex items-center gap-1 text-blue-700 hover:text-blue-900 px-3 py-1.5 rounded-md hover:bg-blue-100 text-sm font-medium transition-colors"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>Logout</span>

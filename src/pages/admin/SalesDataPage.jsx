@@ -13,7 +13,7 @@ const CONFIG = {
   PAGE_CONFIG: {
     title: "Checklist Tasks",
     historyTitle: "Checklist Task History",
-    description: "Showing today's tasks and past due tasks",
+    description: "Showing today's and upcoming tasks",
     historyDescription: "Read-only view of completed tasks with submission history (excluding admin-processed items)",
   },
 }
@@ -43,7 +43,6 @@ function AccountDataPage() {
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const [initialHistoryLoading, setInitialHistoryLoading] = useState(false)
   const [isMobile, setIsMobile] = useState(false);
-  const [selectedAdminItems, setSelectedAdminItems] = useState(new Set()); // Admin done checkbox state
 
   const { checklist, loading, history, hasMore, currentPage } = useSelector((state) => state.checkList);
   const dispatch = useDispatch();
@@ -362,154 +361,47 @@ function AccountDataPage() {
     }
   };
 
-  // Admin checkbox handlers for pending table
-  const handleAdminCheckboxClick = (id) => {
-    setSelectedAdminItems((prevSelected) => {
-      const newSelected = new Set(prevSelected);
-      if (newSelected.has(id)) {
-        newSelected.delete(id);
-      } else {
-        newSelected.add(id);
-      }
-      return newSelected;
-    });
-  };
-
-  const handleSelectAllAdminItems = () => {
-    if (selectedAdminItems.size === filteredAccountData.length) {
-      setSelectedAdminItems(new Set());
-    } else {
-      const allIds = new Set(filteredAccountData.map((item) => item.task_id));
-      setSelectedAdminItems(allIds);
-    }
-  };
-
-  const handleAdminMarkAsDone = async () => {
-    const selectedItemsArray = Array.from(selectedAdminItems);
-    if (selectedItemsArray.length === 0) {
-      alert("Please select at least one item to submit");
-      return;
-    }
-
-    // NEW: Check if all selected items have status selected
-    const missingStatus = selectedItemsArray.filter((id) => {
-      const status = additionalData[id];
-      return !status || status === ""; // Status is empty or not selected
-    });
-
-    if (missingStatus.length > 0) {
-      alert(`Please select status (yes/no) for all selected tasks. ${missingStatus.length} item(s) are missing status selection.\n\nकृपया सभी चयनित कार्यों के लिए स्थिति (हाँ/नहीं) चुनें। ${missingStatus.length} आइटम स्थिति चयन से छूट गए हैं।`);
-      return;
-    }
-
-    // Check for missing remarks (only for items with status "no")
-    const missingRemarks = selectedItemsArray.filter((id) => {
-      const additionalStatus = additionalData[id];
-      const remarks = remarksData[id];
-      return additionalStatus === "no" && (!remarks || remarks.trim() === "");
-    });
-
-    if (missingRemarks.length > 0) {
-      alert(`Please provide remarks for items marked as "no". ${missingRemarks.length} item(s) are missing remarks.\n\nकृपया "नहीं" चिह्नित आइटमों के लिए टिप्पणियाँ प्रदान करें। ${missingRemarks.length} आइटम टिप्पणियों से छूट गए हैं।`);
-      return;
-    }
-
-    // Check for missing required images (only if status is not "no")
-    const missingRequiredImages = selectedItemsArray.filter((id) => {
-      const item = checklist.find((account) => account.task_id === id);
-      const requiresAttachment = item.require_attachment && item.require_attachment.toUpperCase() === "yes";
-      const hasImage = uploadedImages[id] || item.image;
-      const statusIsNo = additionalData[id] === "no";
-
-      // Only require image if attachment is required AND status is not "no"
-      return requiresAttachment && !hasImage && !statusIsNo;
-    });
-
-    if (missingRequiredImages.length > 0) {
-      alert(
-        `Please upload images for all required attachments. ${missingRequiredImages.length} item(s) are missing required images.`,
-      );
-      return;
-    }
-
-    setMarkingAsDone(true);
-
-    // Prepare the submission data
-    const submissionData = selectedItemsArray.map((id) => {
-      const item = checklist.find((account) => account.task_id === id);
-      const imageData = uploadedImages[id];
-
-      return {
-        taskId: item.task_id,
-        department: item.department,
-        givenBy: item.given_by,
-        name: item.name,
-        taskDescription: item.task_description,
-        taskStartDate: item.task_start_date,
-        frequency: item.frequency,
-        enableReminder: item.enable_reminder,
-        requireAttachment: item.require_attachment,
-        status: additionalData[id] || "",
-        remarks: remarksData[id] || "",
-        image: imageData ? {
-          name: imageData.file.name,
-          type: imageData.file.type,
-          size: imageData.file.size,
-          previewUrl: imageData.previewUrl
-        } : item.image ? {
-          existingImage: typeof item.image === 'string' ? item.image : 'File object'
-        } : null
-      };
-    });
-
-    try {
-      console.log("Dispatching updateChecklist with data:", submissionData);
-      await dispatch(updateChecklist(submissionData)).unwrap();
-
-      setSuccessMessage(`Successfully updated ${selectedItemsArray.length} tasks!`);
-
-      // Clear selections after submission
-      setSelectedAdminItems(new Set());
-      setAdditionalData({});
-      setRemarksData({});
-      setUploadedImages({});
-
-      // Refresh the page after showing success message
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-    } catch (err) {
-      console.error("Submission failed:", err);
-      alert(`Submission failed: ${err.message || 'Unknown error'}`);
-      setMarkingAsDone(false);
-    }
-  };
-
   // Filtered data for pending tasks
   const filteredAccountData = useMemo(() => {
     if (!Array.isArray(checklist)) return [];
 
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
+    let filtered = checklist;
 
-    let filtered = searchTerm
-      ? checklist.filter((account) =>
+    // Apply search filter first
+    if (searchTerm) {
+      filtered = filtered.filter((account) =>
         Object.values(account).some(
           (value) =>
             value &&
             value.toString().toLowerCase().includes(searchTerm.toLowerCase())
         )
-      )
-      : checklist;
+      );
+    }
 
-    // Apply date filter - only show today and past dates
+    // Apply date filter - show today's tasks, upcoming tasks, and overdue pending tasks
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+
+    const nextFewDays = new Date(today);
+    nextFewDays.setDate(nextFewDays.getDate() + 3); // Next 3 days
+    nextFewDays.setHours(23, 59, 59, 999); // End of those 3 days
+
     filtered = filtered.filter((account) => {
       if (!account.task_start_date) return false;
 
       const taskDate = new Date(account.task_start_date);
       if (isNaN(taskDate.getTime())) return false;
 
-      return taskDate <= today;
+      // Check if submission_date is null (pending task)
+      const isPending = account.submission_date === null || account.submission_date === undefined || account.submission_date === "";
+
+      // Show:
+      // 1. Today's tasks and next few days (upcoming tasks)
+      // 2. Past tasks that are still pending (overdue pending tasks)
+      const isUpcoming = taskDate <= nextFewDays; // Today and next few days
+      const isOverduePending = taskDate < today && isPending; // Past date but still pending
+
+      return isUpcoming || isOverduePending;
     });
 
     return filtered.sort((a, b) => {
@@ -519,7 +411,7 @@ function AccountDataPage() {
       if (!dateA || isNaN(dateA.getTime())) return 1;
       if (!dateB || isNaN(dateB.getTime())) return -1;
 
-      return dateA.getTime() - dateB.getTime();
+      return dateA.getTime() - dateB.getTime(); // Sort from earliest to latest
     });
   }, [checklist, searchTerm]);
 
@@ -963,29 +855,14 @@ function AccountDataPage() {
               </button>
               {!showHistory && (
                 <button
-                  onClick={userRole === "admin" ? handleAdminMarkAsDone : handleSubmit}
-                  disabled={
-                    (userRole === "admin"
-                      ? selectedAdminItems.size === 0
-                      : selectedItemsCount === 0) ||
-                    isSubmitting ||
-                    markingAsDone ||
-                    (userRole === "admin" &&
-                     Array.from(selectedAdminItems).some(id => !additionalData[id] || additionalData[id] === ""))
-                  }
-                  className={`flex-1 sm:flex-none rounded-md py-2 px-3 sm:px-4 text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base ${userRole === "admin"
-                    ? "bg-green-600 hover:bg-green-700 focus:ring-green-500"
-                    : "gradient-bg hover:from-purple-700 hover:to-pink-700 focus:ring-purple-500"
-                    }`}
+                  onClick={handleSubmit}
+                  disabled={selectedItemsCount === 0 || isSubmitting}
+                  className="flex-1 sm:flex-none rounded-md gradient-bg py-2 px-3 sm:px-4 text-white hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
                 >
-                  {(userRole === "admin" ? markingAsDone : isSubmitting) ? "Processing..." : (
+                  {isSubmitting ? "Processing..." : (
                     <>
-                      <span className="hidden sm:inline">
-                        {userRole === "admin" ? "Submit Selected" : "Submit Selected"} ({userRole === "admin" ? selectedAdminItems.size : selectedItemsCount})
-                      </span>
-                      <span className="sm:hidden">
-                        Submit ({userRole === "admin" ? selectedAdminItems.size : selectedItemsCount})
-                      </span>
+                      <span className="hidden sm:inline">Submit Selected ({selectedItemsCount})</span>
+                      <span className="sm:hidden">Submit ({selectedItemsCount})</span>
                     </>
                   )}
                 </button>
@@ -1379,13 +1256,8 @@ function AccountDataPage() {
                         <input
                           type="checkbox"
                           className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                          checked={
-                            filteredAccountData.length > 0 &&
-                            (userRole === "user"
-                              ? selectedItems.size === filteredAccountData.length
-                              : selectedAdminItems.size === filteredAccountData.length)
-                          }
-                          onChange={userRole === "user" ? handleSelectAllItems : handleSelectAllAdminItems}
+                          checked={filteredAccountData.length > 0 && selectedItems.size === filteredAccountData.length}
+                          onChange={handleSelectAllItems}
                         />
                       </th>
                     )}
@@ -1430,9 +1302,7 @@ function AccountDataPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredAccountData.length > 0 ? (
                     filteredAccountData.map((account, index) => {
-                      const isSelected = userRole === "user"
-                        ? selectedItems.has(account.task_id)
-                        : selectedAdminItems.has(account.task_id);
+                      const isSelected = selectedItems.has(account.task_id);
                       const sequenceNumber = index + 1;
                       return (
                         <tr key={index} className={`${isSelected ? "bg-purple-50" : ""} hover:bg-gray-50`}>
@@ -1447,11 +1317,7 @@ function AccountDataPage() {
                                 type="checkbox"
                                 className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                                 checked={isSelected}
-                                onChange={(e) =>
-                                  userRole === "user"
-                                    ? handleCheckboxClick(e, account.task_id)
-                                    : handleAdminCheckboxClick(account.task_id)
-                                }
+                                onChange={(e) => handleCheckboxClick(e, account.task_id)}
                               />
                             </td>
                           )}
@@ -1623,7 +1489,7 @@ function AccountDataPage() {
           )}
         </div>
       </div>
-    </AdminLayout >
+    </AdminLayout>
   );
 }
 
