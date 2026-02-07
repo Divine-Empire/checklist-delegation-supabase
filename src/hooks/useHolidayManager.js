@@ -208,6 +208,13 @@ export const useHolidayManager = () => {
         setModalOpen(true);
     };
 
+    const handleOpenAddModal = () => {
+        console.log("Opening Add Holiday Modal");
+        setEditIndex(null);
+        resetFormData();
+        setModalOpen(true);
+    };
+
     const exportToCSV = () => {
         const header = ["Date", "Day", "Holiday Name"];
         const rows = holidays.map((h) => [h.date, h.day, h.name]);
@@ -223,17 +230,13 @@ export const useHolidayManager = () => {
         URL.revokeObjectURL(url);
     };
 
-    // Initial fetch
-    useEffect(() => {
-        fetchHolidays();
-    }, []);
-
     return {
         fetchHolidays,
         handleChange,
         handleSubmit,
         handleDelete,
         handleEdit,
+        handleOpenAddModal,
         exportToCSV
     };
 };

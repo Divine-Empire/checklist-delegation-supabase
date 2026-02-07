@@ -2,7 +2,7 @@ import React from 'react';
 import { Pencil, Trash2 } from "lucide-react";
 import useHolidayStore from '../../stores/useHolidayStore';
 
-const WorkingDayTable = ({ setWorkingDayModalOpen, handleDelete, handleEdit }) => {
+const WorkingDayTable = ({ handleOpenWorkingDayAddModal, handleDelete, handleEdit }) => {
     const { workingDays, fetchLoading } = useHolidayStore(); // reusing fetchLoading since generally they load together or we can add specific one if needed, but original used one for main or separated.
     // Actually, store has workingDayLoading for actions, and fetchLoading was used for holidays. 
     // Need to check if I added workingDaySpecific fetch loading? No, I reused fetchLoading in my thought process but maybe store had it? 
@@ -17,7 +17,7 @@ const WorkingDayTable = ({ setWorkingDayModalOpen, handleDelete, handleEdit }) =
                     📅 Working Days Records
                 </h2>
                 <button
-                    onClick={() => setWorkingDayModalOpen(true)}
+                    onClick={handleOpenWorkingDayAddModal}
                     className="rounded-md bg-purple-600 py-1.5 px-3 text-white hover:bg-purple-700 text-xs sm:text-sm"
                 >
                     + Add Working Day

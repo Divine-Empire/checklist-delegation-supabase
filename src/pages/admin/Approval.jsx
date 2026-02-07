@@ -11,6 +11,7 @@ import {
 import AdminLayout from "../../components/layout/AdminLayout";
 import useApprovalStore from "../../store/useApprovalStore";
 import { useApprovalData } from "../../hooks/useApprovalData";
+import Modal from "../../components/common/Modal";
 
 // Configuration object
 const CONFIG = {
@@ -24,11 +25,14 @@ const CONFIG = {
 
 // Confirmation Modal Component
 const ConfirmationModal = ({ isOpen, itemCount, onConfirm, onCancel }) => {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+    <Modal
+      isOpen={isOpen}
+      onClose={onCancel}
+      title="Mark Items as Admin Done"
+      maxWidth="sm:max-w-md"
+    >
+      <div className="flex flex-col items-center">
         <div className="flex items-center justify-center mb-4">
           <div className="bg-yellow-100 text-yellow-600 rounded-full p-3 mr-4">
             <svg
@@ -46,9 +50,6 @@ const ConfirmationModal = ({ isOpen, itemCount, onConfirm, onCancel }) => {
               />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-800">
-            Mark Items as Admin Done
-          </h2>
         </div>
 
         <p className="text-gray-600 text-center mb-6">
@@ -71,7 +72,7 @@ const ConfirmationModal = ({ isOpen, itemCount, onConfirm, onCancel }) => {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 
@@ -100,6 +101,7 @@ function Approval() {
     editingRows,
     editedAdminStatus,
     setEditedAdminStatus,
+    savingEdits,
     confirmationModal,
     setConfirmationModal,
     markingAsDone,

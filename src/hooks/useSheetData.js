@@ -1,14 +1,29 @@
 import { useState, useCallback, useMemo, useEffect } from "react"
 import { formatDate } from "../utils/dateUtils"
 
-const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyRbhgAN0TfMUWOgZ1UPiOAsVyUrj7aDM0hOeybHvB-K7NniRVhwhH3foVs5l4u2N2z/exec"
+const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz47q4SiLvJJom8dRGteqjhufs0Iui4rYTLMeTYqOgY_MFrS0C0o0XkRCPzAOdEeg4jqg/exec"
 
 export const useSheetData = (config) => {
     const {
         sheetName,
+        sheetId, // Optional spreadsheet ID
         scriptUrl = DEFAULT_APPS_SCRIPT_URL,
+        fetchAction = "fetch",
+        updateAction = "updateTaskData",
         driveFolderId,
-        enableAdminFilters = true
+        enableAdminFilters = true,
+        // Configurable column indices
+        columnMapping = {
+            name: 4,
+            startDate: 6,
+            actualDate: 10,
+            status: 12,
+            adminDone: 15,
+            description: 5,
+            taskId: 1,
+            remarks: 13,
+            image: 14
+        }
     } = config;
 
     const [data, setData] = useState([])
@@ -42,6 +57,7 @@ export const useSheetData = (config) => {
         setUsername(localStorage.getItem("user-name") || sessionStorage.getItem("username") || "")
     }, [])
 
+
     // Date Parsing Utilities
     const parseGoogleSheetsDate = (dateStr) => {
         if (!dateStr) return ""
@@ -56,7 +72,7 @@ export const useSheetData = (config) => {
                 const year = Number.parseInt(match[1], 10)
                 const month = Number.parseInt(match[2], 10)
                 const day = Number.parseInt(match[3], 10)
-                return `${day.toString().padStart(2, "0")}/${(month + 1).toString().padStart(2, "0")}/${year}`
+                return `${day.toString().padStart(2, "0")} /${(month + 1).toString().padStart(2, "0")}/${year} `
             }
         }
 
@@ -66,7 +82,7 @@ export const useSheetData = (config) => {
                 const day = date.getDate().toString().padStart(2, "0")
                 const month = (date.getMonth() + 1).toString().padStart(2, "0")
                 const year = date.getFullYear()
-                return `${day}/${month}/${year}`
+                return `${day} /${month}/${year} `
             }
         } catch (error) {
             console.error("Error parsing date:", error)
@@ -91,11 +107,18 @@ export const useSheetData = (config) => {
             const pendingRows = []
             const historyRowsList = []
 
-            // Support differnt URL params if needed, mostly consistent
-            const url = `${scriptUrl}?sheet=${sheetName}&action=fetch`;
+            // Using POST with FormData as GET is reported to not be working
+            const formData = new FormData();
+            formData.append('action', fetchAction);
+            formData.append('sheetName', sheetName);
+            if (sheetId) formData.append('sheetId', sheetId);
 
-            const response = await fetch(url)
-            if (!response.ok) throw new Error(`Failed to fetch data: ${response.status}`)
+            const response = await fetch(scriptUrl, {
+                method: 'POST',
+                body: formData
+            })
+
+            if (!response.ok) throw new Error(`Failed to fetch data: ${response.status} `)
 
             const text = await response.text()
             let jsonData
@@ -111,15 +134,23 @@ export const useSheetData = (config) => {
                 }
             }
 
-            // Normalize Rows
+
+            // Normalize Rows and Headers
             let rows = []
-            if (jsonData.table && jsonData.table.rows) {
+            let headers = []
+
+            if (jsonData.tasks && Array.isArray(jsonData.tasks)) {
+                rows = jsonData.tasks
+                headers = jsonData.headers || []
+            } else if (jsonData.table && jsonData.table.rows) {
                 rows = jsonData.table.rows
+                headers = jsonData.table.cols || []
             } else if (Array.isArray(jsonData)) {
                 rows = jsonData
             } else if (jsonData.values) {
-                rows = jsonData.values.map(row => ({ c: row.map(val => ({ v: val })) }))
+                rows = jsonData.values
             }
+
 
             const today = new Date()
             const tomorrow = new Date(today)
@@ -131,7 +162,7 @@ export const useSheetData = (config) => {
                 const day = d.getDate().toString().padStart(2, "0")
                 const month = (d.getMonth() + 1).toString().padStart(2, "0")
                 const year = d.getFullYear()
-                return `${day}/${month}/${year}`
+                return `${day} /${month}/${year} `
             }
 
             const todayStr = formatDateForCompare(today)
@@ -141,70 +172,71 @@ export const useSheetData = (config) => {
             const currentUsername = username || localStorage.getItem("user-name") || sessionStorage.getItem("username")
             const currentUserRole = userRole || localStorage.getItem("role") || sessionStorage.getItem("role")
 
+            // Determine if we should skip the first row
+            const isVisualizationApi = !!(jsonData.table && jsonData.table.rows)
+            const isRawValues = !!jsonData.values
+
             rows.forEach((row, rowIndex) => {
-                if (rowIndex === 0) return // Skip header if included in data
+                if (rowIndex === 0 && (isVisualizationApi || isRawValues)) return
 
                 let rowValues = []
-                if (row.c) {
-                    rowValues = row.c.map(cell => cell && cell.v !== undefined ? cell.v : "")
-                } else if (Array.isArray(row)) {
+                if (row.c) { // Visualization API format
+                    // Prefer formatted value (.f) for dates and display
+                    rowValues = row.c.map(cell => {
+                        if (!cell) return "";
+                        return cell.f !== undefined ? cell.f : (cell.v !== undefined ? cell.v : "");
+                    })
+                } else if (Array.isArray(row)) { // Raw array format
                     rowValues = row
+                } else if (typeof row === 'object') { // Object format
+                    if (headers.length > 0) {
+                        rowValues = headers.map(h => row[h.id] !== undefined ? row[h.id] : "")
+                    } else {
+                        rowValues = Object.values(row)
+                    }
                 }
 
-                // Column Config Extraction (Specific to RKL/Admin Sheet Structure)
-                // Adjust these indices based on config if needed, but they seem consistent across data pages
-                // Index 4 = Name/Given By (Member)
-                // Index 6 = Start Date (G)
-                // Index 10 = Actual/End Date (K - sometimes L depending on sheet, need to be careful)
-                // Index 12 = Status
-                // Index 15 = Admin Done
-
-                // Dynamic Mapping via generic indices or config could be better, but sticking to observed pattern:
-                const assignedTo = rowValues[4] || "Unassigned"
+                // Column Config Extraction using mapping
+                const assignedTo = rowValues[columnMapping.name] || "Unassigned"
                 membersSet.add(assignedTo)
 
-                const isUserMatch = currentUserRole === "admin" || assignedTo.toLowerCase() === (currentUsername || '').toLowerCase()
-                if (!isUserMatch && currentUserRole !== "admin") return
+                const isUserMatch = currentUserRole.toLowerCase() === "admin" || assignedTo.toLowerCase() === (currentUsername || '').toLowerCase()
+                if (!isUserMatch) return
 
-                // Standard RKL structure indices
-                const startDatesVal = rowValues[6]
-                const actualDateVal = rowValues[10] // Or 11 depending on page? Check accounts page. Accounts used 10 for Actual.
-                // NOTE: Account page uses rowValues[10] for Column K.
-                // NOTE: Admin page seems to use similar.
+                // Standard indices from mapping
+                const startDatesVal = rowValues[columnMapping.startDate]
+                const actualDateVal = rowValues[columnMapping.actualDate]
+                const statusVal = rowValues[columnMapping.status]
+                const adminDoneVal = rowValues[columnMapping.adminDone]
 
-                // Let's assume standard indices for now, but allow config overrides if columns shift
-                const statusVal = rowValues[12] // Column M
-                const adminDoneVal = rowValues[15] // Column P
+
+                const dateStr = startDatesVal ? String(startDatesVal).trim() : ""
+                const formattedDate = parseGoogleSheetsDate(dateStr)
+                const rowDateObj = parseDateFromDDMMYYYY(formattedDate)
+
 
                 if ((statusVal && String(statusVal).trim() === "DONE") ||
                     (adminDoneVal && String(adminDoneVal).trim() === "Done")) {
                     return
                 }
 
-                const dateStr = startDatesVal ? String(startDatesVal).trim() : ""
-                const formattedDate = parseGoogleSheetsDate(dateStr)
-                const rowDateObj = parseDateFromDDMMYYYY(formattedDate)
-
                 // Create Row Object
-                const taskId = rowValues[1]
-                // Stable ID logic
-                const stableId = taskId ? `task_${taskId}_${rowIndex + 1}` : `row_${rowIndex + 1}_${Math.random().toString(36).substr(2, 9)}`
+                const taskId = rowValues[columnMapping.taskId] || row._id || `task_${rowIndex} `
+                const stableId = row._id || `task_${taskId}_${rowIndex + 1} `
 
                 const rowData = {
                     _id: stableId,
-                    _rowIndex: rowIndex + 1,
+                    _rowIndex: row._rowIndex || rowIndex + 1,
                     _taskId: taskId,
                     _raw: rowValues,
-                    // Map common fields
                     task_id: taskId,
                     date: formattedDate,
                     name: assignedTo,
-                    description: rowValues[5],
+                    description: rowValues[columnMapping.description],
                     status: statusVal,
-                    remarks: rowValues[13],
-                    image: rowValues[14], // URL
-                    // Dynamic binding for table
-                    ...rowValues.reduce((acc, val, idx) => ({ ...acc, [`col${idx}`]: val }), {})
+                    remarks: rowValues[columnMapping.remarks],
+                    image: rowValues[columnMapping.image],
+                    ...rowValues.reduce((acc, val, idx) => ({ ...acc, [`col${idx} `]: val }), {})
                 }
 
                 // Filtering Logic for Pending vs History
@@ -242,6 +274,13 @@ export const useSheetData = (config) => {
             setLoading(false)
         }
     }, [sheetName, scriptUrl, username, userRole])
+
+    // Fetch data on mount and when sheetName changes
+    useEffect(() => {
+        if (sheetName) {
+            fetchData()
+        }
+    }, [fetchData])
 
     // Filters
     const filteredData = useMemo(() => {
@@ -351,7 +390,7 @@ export const useSheetData = (config) => {
                     const formData = new FormData()
                     formData.append("action", "uploadFile")
                     formData.append("base64Data", b64)
-                    formData.append("fileName", `task_${item.task_id}_${Date.now()}.${item._newImage.name.split('.').pop()}`)
+                    formData.append("fileName", `task_${item.task_id}_${Date.now()}.${item._newImage.name.split('.').pop()} `)
                     formData.append("mimeType", item._newImage.type)
                     formData.append("folderId", driveFolderId)
 
@@ -367,7 +406,7 @@ export const useSheetData = (config) => {
             const day = today.getDate().toString().padStart(2, "0")
             const month = (today.getMonth() + 1).toString().padStart(2, "0")
             const year = today.getFullYear()
-            const todayStr = `${day}/${month}/${year}`
+            const todayStr = `${day} /${month}/${year} `
 
             return {
                 taskId: item.task_id,
@@ -381,7 +420,7 @@ export const useSheetData = (config) => {
 
         const payload = {
             sheetName,
-            action: "updateTaskData",
+            action: updateAction,
             rowData: JSON.stringify(submissionData.filter(Boolean))
         }
 

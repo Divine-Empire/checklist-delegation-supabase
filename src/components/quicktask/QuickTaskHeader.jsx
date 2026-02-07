@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Search, ChevronDown, Filter, Trash2, X } from "lucide-react";
 import useQuickTaskUIStore from '../../stores/useQuickTaskUIStore';
 import { CONFIG } from '../../config/quickTaskConfig';
@@ -21,6 +21,23 @@ const QuickTaskHeader = ({
         dropdownOpen, toggleDropdown, closeDropdowns,
         selectedTasks
     } = useQuickTaskUIStore();
+
+    const nameFilterRef = useRef(null);
+    const freqFilterRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                (dropdownOpen.name && nameFilterRef.current && !nameFilterRef.current.contains(event.target)) ||
+                (dropdownOpen.frequency && freqFilterRef.current && !freqFilterRef.current.contains(event.target))
+            ) {
+                closeDropdowns();
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [dropdownOpen, closeDropdowns]);
 
     return (
         <div className="sticky top-0 z-30 bg-white pb-4 border-b border-gray-200">
@@ -64,7 +81,7 @@ const QuickTaskHeader = ({
 
                     <div className="flex gap-2">
                         {/* Name Filter */}
-                        <div className="relative">
+                        <div className="relative" ref={nameFilterRef}>
                             <div className="flex items-center gap-2">
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -110,7 +127,7 @@ const QuickTaskHeader = ({
                         </div>
 
                         {/* Frequency Filter */}
-                        <div className="relative">
+                        <div className="relative" ref={freqFilterRef}>
                             <button onClick={() => toggleDropdown('frequency')} className="flex items-center gap-2 px-3 py-2 border border-purple-200 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50">
                                 <Filter className="h-4 w-4" />
                                 {freqFilter || 'Filter Frequency'}

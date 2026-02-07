@@ -193,16 +193,19 @@ export const useWorkingDayManager = () => {
         setWorkingDayModalOpen(true);
     };
 
-    // Initial fetch handled by component or parallel call
-    useEffect(() => {
-        fetchWorkingDays();
-    }, []);
+    const handleOpenWorkingDayAddModal = () => {
+        console.log("Opening Add Working Day Modal");
+        setWorkingDayEditIndex(null);
+        resetWorkingDayFormData();
+        setWorkingDayModalOpen(true);
+    };
 
     return {
         fetchWorkingDays,
         handleWorkingDayChange,
         handleWorkingDaySubmit,
         handleWorkingDayDelete,
-        handleWorkingDayEdit
+        handleWorkingDayEdit,
+        handleOpenWorkingDayAddModal
     };
 };

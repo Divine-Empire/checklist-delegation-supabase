@@ -107,6 +107,7 @@ export default function AccountDataPage() {
     rawHistoryData
   } = useSheetData({
     sheetName: CONFIG.SHEET_NAME,
+    scriptUrl: CONFIG.SCRIPT_URL,
     driveFolderId: CONFIG.DRIVE_FOLDER_ID
   })
 

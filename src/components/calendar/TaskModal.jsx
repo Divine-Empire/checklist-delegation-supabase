@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import useCalendarStore from '../../stores/useCalendarStore';
 import { normalize, freqMapKey, freqLabels, freqColors, formatDate } from '../../utils/calendarUtils';
+import Modal from '../common/Modal';
 
 const TaskModal = () => {
     const {
@@ -17,7 +18,7 @@ const TaskModal = () => {
     const [filterType, setFilterType] = useState("name");
     const [statusFilter, setStatusFilter] = useState("all");
 
-    if (!showModal || !selectedEvent || !selectedEvent.isDateView) return null;
+    if (!selectedEvent || !selectedEvent.isDateView) return null;
 
     // Get tasks based on selected tab
     const getTasksForTab = () => {
@@ -125,70 +126,49 @@ const TaskModal = () => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
-                {/* Header */}
-                <div className="sticky top-0 bg-white border-b-2 border-gray-200 p-4 sm:p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 truncate pr-2">
-                            📅 Tasks - {selectedEvent.date}
-                            {lastWorkingDate && (
-                                <span className="text-sm font-normal text-gray-600 ml-2">
-                                    (Range: Today - {formatDateDisplay(lastWorkingDate)})
-                                </span>
-                            )}
-                        </h2>
-                        <button
-                            onClick={() => setShowModal(false)}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
-                        >
-                            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
+        <Modal
+            isOpen={showModal}
+            onClose={() => setShowModal(false)}
+            title={`📅 Tasks - ${selectedEvent.date}`}
+            maxWidth="sm:max-w-4xl"
+        >
+            <div className="flex flex-col max-h-[70vh]">
+                {/* Info Bar */}
+                {lastWorkingDate && (
+                    <div className="text-sm font-normal text-gray-600 mb-4 bg-gray-50 p-2 rounded-lg">
+                        Range: Today - {formatDateDisplay(lastWorkingDate)}
                     </div>
+                )}
 
-                    {/* Status Filter */}
-                    <div className="flex flex-wrap gap-2 mb-3">
+                {/* Filters */}
+                <div className="flex flex-col sm:flex-row gap-2 mb-4">
+                    <select
+                        value={filterType}
+                        onChange={(e) => setFilterType(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    >
+                        <option value="name">By Name</option>
+                        <option value="taskId">By Task ID</option>
+                    </select>
+                    <input
+                        type="text"
+                        placeholder={`Search by ${filterType === "name" ? "person name" : "task ID"}...`}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    {searchQuery && (
                         <button
-                            onClick={() => setStatusFilter("all")}
-                            className={`px-3 sm:px-4 py-1.5 rounded-lg font-medium transition-all text-xs sm:text-sm ${statusFilter === "all" ? "bg-gray-800 text-white shadow-sm" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+                            onClick={() => setSearchQuery("")}
+                            className="px-3 sm:px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors text-xs sm:text-sm font-medium text-gray-700"
                         >
-                            All Tasks
+                            Clear
                         </button>
-                        {/* Status filters were commented out in original, keeping consistent */}
-                    </div>
-
-                    {/* Search Filter */}
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        <select
-                            value={filterType}
-                            onChange={(e) => setFilterType(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                        >
-                            <option value="name">By Name</option>
-                            <option value="taskId">By Task ID</option>
-                        </select>
-                        <input
-                            type="text"
-                            placeholder={`Search by ${filterType === "name" ? "person name" : "task ID"}...`}
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery("")}
-                                className="px-3 sm:px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors text-xs sm:text-sm font-medium text-gray-700"
-                            >
-                                Clear
-                            </button>
-                        )}
-                    </div>
+                    )}
                 </div>
 
                 {/* Content */}
-                <div className="p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1 bg-gray-50">
+                <div className="space-y-3 sm:space-y-4 overflow-y-auto flex-1 pr-2">
                     {!hasTasks && (
                         <div className="text-center py-8 sm:py-12">
                             <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gray-200 rounded-full mb-4">
@@ -290,17 +270,16 @@ const TaskModal = () => {
                     })}
                 </div>
 
-                {/* Footer */}
-                <div className="p-4 sm:p-6 bg-white border-t border-gray-200">
+                <div className="mt-4 flex justify-end">
                     <button
                         onClick={() => setShowModal(false)}
-                        className="w-full px-4 sm:px-6 py-2.5 sm:py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-all duration-200 shadow-md hover:shadow-lg font-semibold text-sm sm:text-base"
+                        className="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-all font-semibold text-sm"
                     >
                         Close
                     </button>
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 };
 
