@@ -10,9 +10,9 @@ export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchT
 
   try {
     const today = new Date();
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
-    const endOfTodayISO = endOfToday.toISOString();
+    const futureLimit = new Date();
+    futureLimit.setDate(today.getDate() + 60); // Fetch up to 60 days in the future
+    const futureLimitISO = futureLimit.toISOString();
 
     // Calculate range for pagination
     const from = (page - 1) * limit;
@@ -21,7 +21,7 @@ export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchT
     let query = supabase
       .from('checklist')
       .select('*', { count: 'exact' })
-      .lte('task_start_date', endOfTodayISO)
+      .lte('task_start_date', futureLimitISO)
       .order('task_start_date', { ascending: true })
       .is("submission_date", null)
       .is("status", null)

@@ -44,6 +44,7 @@ function AccountDataPage() {
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const [initialHistoryLoading, setInitialHistoryLoading] = useState(false)
   const [isMobile, setIsMobile] = useState(false);
+  const [statusLabelFilter, setStatusLabelFilter] = useState("all");
 
   const { checklist, loading, history, hasMore, currentPage } = useSelector((state) => state.checkList);
   const dispatch = useDispatch();
@@ -381,13 +382,9 @@ function AccountDataPage() {
       );
     }
 
-    // Apply date filter - show today's tasks, upcoming tasks, and overdue pending tasks
+    // Apply date filter - show today's tasks, upcoming tasks (based on frequency), and overdue pending tasks
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Start of today
-
-    const nextFewDays = new Date(today);
-    nextFewDays.setDate(nextFewDays.getDate() + 3); // Next 3 days
-    nextFewDays.setHours(23, 59, 59, 999); // End of those 3 days
+    today.setHours(0, 0, 0, 0);
 
     filtered = filtered.filter((account) => {
       if (!account.task_start_date) return false;
@@ -398,13 +395,43 @@ function AccountDataPage() {
       // Check if submission_date is null (pending task)
       const isPending = account.submission_date === null || account.submission_date === undefined || account.submission_date === "";
 
-      // Show:
-      // 1. Today's tasks and next few days (upcoming tasks)
-      // 2. Past tasks that are still pending (overdue pending tasks)
-      const isUpcoming = taskDate <= nextFewDays; // Today and next few days
-      const isOverduePending = taskDate < today && isPending; // Past date but still pending
+      const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+      const isOverduePending = taskDateOnly < today && isPending;
+      const isToday = taskDateOnly.getTime() === today.getTime();
 
-      return isUpcoming || isOverduePending;
+      // 2. Today's and upcoming tasks based on frequency
+      const frequency = (account.frequency || "").toLowerCase().trim();
+
+      // Default visibility window (End of Today)
+      let endOfWindow = new Date(today);
+      endOfWindow.setHours(23, 59, 59, 999);
+
+      if (frequency === 'daily') {
+        // Show Today + Next 2 Days (e.g. 7th, 8th, 9th)
+        endOfWindow.setDate(today.getDate() + 2);
+      } else if (frequency.includes('monthly')) {
+        // Show current month and everything until end of next month
+        endOfWindow = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+      } else if (frequency.includes('weekly') || frequency.includes('alternate') || frequency.includes('fortnightly')) {
+        // Show next 14 days for weekly/alternate/fortnightly tasks
+        endOfWindow.setDate(today.getDate() + 14);
+      } else {
+        // Default buffer for others (e.g. Quarterly, Yearly, or unspecified)
+        endOfWindow.setDate(today.getDate() + 30);
+      }
+
+      endOfWindow.setHours(23, 59, 59, 999);
+
+      const isUpcomingOrToday = taskDate >= today && taskDate <= endOfWindow;
+      const isUpcoming = taskDateOnly > today && taskDate <= endOfWindow;
+
+      // Apply Label Filter
+      if (statusLabelFilter === "overdue") return isOverduePending;
+      if (statusLabelFilter === "today") return isToday;
+      if (statusLabelFilter === "upcoming") return isUpcoming;
+
+      // Default: Return true if task is for today or within the future window OR overdue
+      return isUpcomingOrToday || isOverduePending;
     });
 
     return filtered.sort((a, b) => {
@@ -416,7 +443,7 @@ function AccountDataPage() {
 
       return dateA.getTime() - dateB.getTime(); // Sort from earliest to latest
     });
-  }, [checklist, searchTerm]);
+  }, [checklist, searchTerm, statusLabelFilter]);
 
   const filteredHistoryData = useMemo(() => {
     if (!Array.isArray(history)) return []
@@ -837,6 +864,25 @@ function AccountDataPage() {
                 className="w-full pl-10 pr-4 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base"
               />
             </div>
+            {!showHistory && (
+              <div className="relative w-full sm:w-48">
+                <select
+                  value={statusLabelFilter}
+                  onChange={(e) => setStatusLabelFilter(e.target.value)}
+                  className="w-full appearance-none bg-white border border-purple-200 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base pr-10"
+                >
+                  <option value="all">All Labels</option>
+                  <option value="today">Today</option>
+                  <option value="upcoming">Upcoming</option>
+                  <option value="overdue">Overdue</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-purple-500">
+                  <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                  </svg>
+                </div>
+              </div>
+            )}
             <div className="flex gap-2">
               <button
                 onClick={toggleHistory}
@@ -1315,7 +1361,32 @@ function AccountDataPage() {
                             </div>
                           </td>
                           {(userRole === "user" || userRole === "admin") && (
-                            <td className="px-2 sm:px-3 py-2 sm:py-4 w-12">
+                            <td className="px-2 sm:px-3 py-2 sm:py-4 w-12 text-center">
+                              {account.task_start_date && (() => {
+                                const startDate = new Date(account.task_start_date);
+                                const today = new Date(new Date().setHours(0, 0, 0, 0));
+                                const taskDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+
+                                if (taskDateOnly < today) {
+                                  return (
+                                    <div className="mb-1">
+                                      <span className="bg-red-600 text-white text-[9px] font-black px-1 rounded-sm uppercase">Overdue</span>
+                                    </div>
+                                  );
+                                } else if (taskDateOnly.getTime() === today.getTime()) {
+                                  return (
+                                    <div className="mb-1">
+                                      <span className="bg-orange-500 text-white text-[9px] font-black px-1 rounded-sm uppercase">Today</span>
+                                    </div>
+                                  );
+                                } else {
+                                  return (
+                                    <div className="mb-1">
+                                      <span className="bg-blue-500 text-white text-[9px] font-black px-1 rounded-sm uppercase whitespace-nowrap">Upcoming</span>
+                                    </div>
+                                  );
+                                }
+                              })()}
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"

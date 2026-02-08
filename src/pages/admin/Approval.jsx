@@ -7,6 +7,10 @@ import {
   Edit,
   Save,
   XCircle,
+  ClipboardList,
+  Users,
+  Calendar,
+  FilterX,
 } from "lucide-react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import useApprovalStore from "../../store/useApprovalStore";
@@ -156,31 +160,40 @@ function Approval() {
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex flex-col gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-purple-700 text-center sm:text-left">
-              {CONFIG.PAGE_CONFIG.historyTitle}
-            </h1>
+          <div className="bg-white p-6 rounded-xl border border-purple-100 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <h1 className="text-2xl font-extrabold tracking-tight text-purple-900">
+                  {CONFIG.PAGE_CONFIG.historyTitle}
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  Manage and approve task submissions efficiently
+                </p>
+              </div>
 
-            {/* Tab Buttons */}
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => setActiveApprovalTab('checklist')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeApprovalTab === 'checklist'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-              >
-                Checklist Tasks
-              </button>
-              <button
-                onClick={() => setActiveApprovalTab('delegation')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeApprovalTab === 'delegation'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-              >
-                Delegation Tasks
-              </button>
+              {/* Tab Styling Enhanced */}
+              <div className="flex bg-gray-100 p-1 rounded-lg">
+                <button
+                  onClick={() => setActiveApprovalTab('checklist')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all duration-200 ${activeApprovalTab === 'checklist'
+                    ? 'bg-white text-purple-700 shadow-sm ring-1 ring-purple-100'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                    }`}
+                >
+                  <ClipboardList className={`h-4 w-4 ${activeApprovalTab === 'checklist' ? 'text-purple-600' : 'text-gray-400'}`} />
+                  Checklist Tasks
+                </button>
+                <button
+                  onClick={() => setActiveApprovalTab('delegation')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all duration-200 ${activeApprovalTab === 'delegation'
+                    ? 'bg-white text-purple-700 shadow-sm ring-1 ring-purple-100'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                    }`}
+                >
+                  <Users className={`h-4 w-4 ${activeApprovalTab === 'delegation' ? 'text-purple-600' : 'text-gray-400'}`} />
+                  Delegation Tasks
+                </button>
+              </div>
             </div>
           </div>
 
@@ -219,18 +232,16 @@ function Approval() {
               </div>
             ) : (
               <>
-                {/* History Filters */}
-                <div className="p-4 border-b border-purple-100 bg-gray-50">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
+                {/* History Filters - Single Row Design */}
+                <div className="p-4 border-b border-purple-100 bg-white shadow-inner">
+                  <div className="flex flex-wrap items-end gap-6">
                     {getFilteredMembersList().length > 0 && userRole === "admin" && (
-                      <div className="flex flex-col">
-                        <div className="mb-2 flex items-center">
-                          <span className="text-sm font-medium text-purple-700">
-                            Filter by Member:
-                          </span>
-                        </div>
-                        <div className="relative min-w-[250px]">
-                          <div className="relative">
+                      <div className="flex-1 min-w-[250px]">
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+                          <Users className="h-3 w-3" /> Filter by Member
+                        </label>
+                        <div className="relative">
+                          <div className="relative group">
                             <input
                               type="text"
                               placeholder="Search members..."
@@ -239,16 +250,25 @@ function Approval() {
                                 setMemberSearchTerm(e.target.value)
                               }
                               onFocus={() => setShowMemberDropdown(true)}
-                              className="w-full p-2 pr-8 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              className="w-full pl-3 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
                             />
                             <Search
-                              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400"
-                              size={18}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-purple-500 transition-colors"
+                              size={16}
                             />
                           </div>
 
                           {showMemberDropdown && (
-                            <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                            <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto ring-1 ring-black/5">
+                              <div className="p-2 border-b border-gray-50 sticky top-0 bg-white/95 backdrop-blur-sm z-10 flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase">Select Members</span>
+                                <button
+                                  onClick={() => setShowMemberDropdown(false)}
+                                  className="p-1 hover:bg-gray-100 rounded-md text-gray-400"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
                               {getFilteredMembersList()
                                 .filter((member) =>
                                   member
@@ -258,16 +278,13 @@ function Approval() {
                                 .map((member, idx) => (
                                   <div
                                     key={idx}
-                                    className="flex items-center px-3 py-2 hover:bg-purple-50 cursor-pointer"
+                                    className={`flex items-center px-4 py-2.5 hover:bg-purple-50 cursor-pointer transition-colors ${selectedMembers.includes(member) ? 'bg-purple-50/50' : ''}`}
                                     onClick={() => handleMemberSelection(member)}
                                   >
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedMembers.includes(member)}
-                                      onChange={() => { }}
-                                      className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 pointer-events-none"
-                                    />
-                                    <label className="ml-2 text-sm text-gray-700 cursor-pointer flex-1">
+                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selectedMembers.includes(member) ? 'bg-purple-600 border-purple-600 text-white' : 'border-gray-300 bg-white'}`}>
+                                      {selectedMembers.includes(member) && <CheckCircle2 size={10} />}
+                                    </div>
+                                    <label className={`ml-3 text-sm cursor-pointer flex-1 transition-colors ${selectedMembers.includes(member) ? 'text-purple-900 font-medium' : 'text-gray-700'}`}>
                                       {member}
                                     </label>
                                   </div>
@@ -277,26 +294,27 @@ function Approval() {
                                   .toLowerCase()
                                   .includes(memberSearchTerm.toLowerCase())
                               ).length === 0 && (
-                                  <div className="px-3 py-2 text-sm text-gray-500">
-                                    No members found
+                                  <div className="px-4 py-8 text-center">
+                                    <Search className="h-8 w-8 text-gray-200 mx-auto mb-2" />
+                                    <p className="text-xs text-gray-500">No members found</p>
                                   </div>
                                 )}
                             </div>
                           )}
 
                           {selectedMembers.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
+                            <div className="mt-2 flex flex-wrap gap-1.5">
                               {selectedMembers.map((member, idx) => (
                                 <span
                                   key={idx}
-                                  className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded-md text-xs"
+                                  className="inline-flex items-center pl-2 pr-1 py-1 bg-purple-100 text-purple-700 rounded-md text-[10px] font-bold uppercase tracking-wider animate-in fade-in zoom-in duration-200"
                                 >
                                   {member}
                                   <button
                                     onClick={() => handleMemberSelection(member)}
-                                    className="ml-1 text-purple-600 hover:text-purple-800"
+                                    className="ml-1 p-0.5 hover:bg-purple-200 rounded transition-colors"
                                   >
-                                    <X size={14} />
+                                    <X size={12} />
                                   </button>
                                 </span>
                               ))}
@@ -305,56 +323,94 @@ function Approval() {
                         </div>
                       </div>
                     )}
+
                     <div className="flex flex-col">
-                      <div className="mb-2 flex items-center">
-                        <span className="text-sm font-medium text-purple-700">
-                          Filter by Date Range:
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+                        <Calendar className="h-3 w-3" /> Date Range
+                      </label>
+                      <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-1">
                         <div className="flex items-center">
-                          <label
-                            htmlFor="start-date"
-                            className="text-sm text-gray-700 mr-1"
-                          >
-                            From
-                          </label>
                           <input
                             id="start-date"
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="text-sm border border-gray-200 rounded-md p-1"
+                            className="bg-transparent text-sm p-1.5 focus:outline-none cursor-pointer"
                           />
                         </div>
+                        <div className="px-2 text-gray-400 text-xs font-bold">TO</div>
                         <div className="flex items-center">
-                          <label
-                            htmlFor="end-date"
-                            className="text-sm text-gray-700 mr-1"
-                          >
-                            To
-                          </label>
                           <input
                             id="end-date"
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className="text-sm border border-gray-200 rounded-md p-1"
+                            className="bg-transparent text-sm p-1.5 focus:outline-none cursor-pointer"
                           />
                         </div>
                       </div>
                     </div>
-                    {(selectedMembers.length > 0 ||
-                      startDate ||
-                      endDate ||
-                      searchTerm) && (
+
+                    {/* Task Completion Statistics - Integrated into Filter Row */}
+                    <div className="flex-1 flex flex-wrap items-end gap-3 justify-end ml-auto">
+                      <div className="flex items-center gap-2 bg-blue-50/50 p-1.5 rounded-lg border border-blue-100/50">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-blue-400 uppercase leading-none mb-1">
+                            {activeApprovalTab === 'checklist' ? 'Checklist' : 'Delegation'} Done
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-lg font-black text-blue-700 leading-none">
+                                {getTaskStatistics().totalCompleted}
+                              </span>
+                              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-tighter">Tasks</span>
+                            </div>
+
+                            {(selectedMembers.length > 0 || startDate || endDate || searchTerm) && (
+                              <div className="flex items-center gap-1.5 pl-2 ml-2 border-l border-blue-200">
+                                <span className="text-[10px] font-bold text-indigo-400 uppercase leading-none">Filtered</span>
+                                <span className="text-lg font-black text-indigo-700 leading-none">
+                                  {getTaskStatistics().filteredTotal}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Member Statistics - Small Pills */}
+                      <div className="flex flex-wrap gap-2 max-w-[400px]">
+                        {selectedMembers.slice(0, 3).map((member) => (
+                          <div
+                            key={member}
+                            className="px-2 py-1 bg-white rounded-md border border-purple-100 shadow-sm flex items-center gap-2"
+                          >
+                            <span className="text-[10px] font-bold text-gray-400 uppercase truncate max-w-[60px]">{member}</span>
+                            <span className="text-xs font-black text-purple-600">
+                              {getTaskStatistics().memberStats[member]}
+                            </span>
+                          </div>
+                        ))}
+                        {selectedMembers.length > 3 && (
+                          <div className="px-2 py-1 bg-gray-50 rounded-md border border-gray-100 text-[10px] font-bold text-gray-400 uppercase">
+                            +{selectedMembers.length - 3} More
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+
+                    <div className="flex items-center gap-2 pb-1">
+                      {(selectedMembers.length > 0 || startDate || endDate || searchTerm) && (
                         <button
                           onClick={resetFilters}
-                          className="px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-sm"
+                          className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all text-sm font-bold border border-red-100 group"
                         >
-                          Clear All Filters
+                          <FilterX className="h-4 w-4 group-hover:rotate-12 transition-transform" />
+                          Clear All
                         </button>
                       )}
+                    </div>
                   </div>
                 </div>
 
@@ -368,90 +424,64 @@ function Approval() {
                   }
                 />
 
-                {/* Task Statistics */}
-                <div className="p-4 border-b border-purple-100 bg-blue-50">
-                  <div className="flex flex-col">
-                    <h3 className="text-sm font-medium text-blue-700 mb-2">
-                      Task Completion Statistics:
-                    </h3>
-                    <div className="flex flex-wrap gap-4">
-                      <div className="px-3 py-2 bg-white rounded-md shadow-sm">
-                        <span className="text-xs text-gray-500">
-                          Total Completed
-                        </span>
-                        <div className="text-lg font-semibold text-blue-600">
-                          {getTaskStatistics().totalCompleted}
-                        </div>
+                {/* Action Bar - Floating or prominent when items selected */}
+                {userRole === "admin" && selectedHistoryItems.length > 0 && (
+                  <div className="px-4 py-3 bg-green-50 border-b border-green-100 flex items-center justify-between animate-in slide-in-from-top duration-300">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-green-600 text-white p-1.5 rounded-lg shadow-sm">
+                        <CheckCircle2 size={16} />
                       </div>
-                      {(selectedMembers.length > 0 ||
-                        startDate ||
-                        endDate ||
-                        searchTerm) && (
-                          <div className="px-3 py-2 bg-white rounded-md shadow-sm">
-                            <span className="text-xs text-gray-500">
-                              Filtered Results
-                            </span>
-                            <div className="text-lg font-semibold text-blue-600">
-                              {getTaskStatistics().filteredTotal}
-                            </div>
-                          </div>
-                        )}
-                      {selectedMembers.map((member) => (
-                        <div
-                          key={member}
-                          className="px-3 py-2 bg-white rounded-md shadow-sm"
-                        >
-                          <span className="text-xs text-gray-500">{member}</span>
-                          <div className="text-lg font-semibold text-indigo-600">
-                            {getTaskStatistics().memberStats[member]}
-                          </div>
-                        </div>
-                      ))}
+                      <div>
+                        <p className="text-sm font-bold text-green-900">
+                          {selectedHistoryItems.length} Items Selected
+                        </p>
+                        <p className="text-[11px] text-green-700 font-medium">
+                          You are about to mark these as "Admin Done"
+                        </p>
+                      </div>
                     </div>
-                    {/* Add Mark as Done Button when items are selected */}
-                    {userRole === "admin" && selectedHistoryItems.length > 0 && (
-                      <div className="mt-4 flex justify-end">
-                        <button
-                          onClick={handleMarkMultipleDone}
-                          disabled={markingAsDone}
-                          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 shadow-sm flex items-center disabled:opacity-50"
-                        >
-                          {markingAsDone ? (
-                            <>
-                              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                              Processing...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="h-4 w-4 mr-2" />
-                              Mark {selectedHistoryItems.length} Items as Done
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )}
+                    <button
+                      onClick={handleMarkMultipleDone}
+                      disabled={markingAsDone}
+                      className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-lg shadow-green-200 transition-all font-bold text-sm flex items-center hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
+                    >
+                      {markingAsDone ? (
+                        <>
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          Approve Selected
+                        </>
+                      )}
+                    </button>
                   </div>
-                </div>
+                )}
 
                 {/* History Table - Based on Active Tab */}
                 <div className="hidden sm:block h-[calc(100vh-300px)] overflow-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
-                        {/* Admin Done Column - NOW FIRST */}
+                        {/* Admin Done Column - Refined */}
                         {userRole === "admin" && (
-                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 min-w-[120px]">
-                            Admin Done
+                          <th className="px-4 py-3 text-left text-[10px] font-extrabold text-purple-900 uppercase tracking-widest bg-purple-50/50 border-r border-purple-100 min-w-[140px]">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Admin Status
+                            </div>
                           </th>
                         )}
 
-                        {/* Admin Select Column Header - Action Column */}
+                        {/* Admin Select Column Header - Refined */}
                         {userRole === "admin" && (
-                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                            <div className="flex flex-col items-center">
+                          <th className="px-4 py-3 text-center text-[10px] font-extrabold text-green-900 uppercase tracking-widest bg-green-50/50 w-24 border-r border-green-100">
+                            <div className="flex flex-col items-center gap-1.5">
                               <input
                                 type="checkbox"
-                                className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                className="h-4 w-4 rounded border-green-300 text-green-600 focus:ring-green-500 transition-all cursor-pointer"
                                 checked={
                                   currentData.filter(
                                     (item) => {
@@ -482,7 +512,7 @@ function Approval() {
                                   }
                                 }}
                               />
-                              <span className="text-xs text-gray-400 mt-1 uppercase font-medium">Admin</span>
+                              <span>Bulk Select</span>
                             </div>
                           </th>
                         )}
@@ -547,11 +577,11 @@ function Approval() {
 
                           return (
                             <tr key={history._id} className="hover:bg-gray-50">
-                              {/* FIRST: Admin Done Column */}
+                              {/* FIRST: Admin Status Column - Refined */}
                               {userRole === "admin" && (
-                                <td className="px-3 py-4 bg-gray-50 min-w-[120px]">
+                                <td className="px-4 py-4 bg-purple-50/20 border-r border-purple-50 min-w-[140px]">
                                   {isInEditMode ? (
-                                    <div className="flex items-center space-x-2">
+                                    <div className="flex items-center gap-2">
                                       <select
                                         value={editedAdminStatus[history._id] || "Not Done"}
                                         onChange={(e) =>
@@ -560,111 +590,91 @@ function Approval() {
                                             [history._id]: e.target.value,
                                           }))
                                         }
-                                        className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="text-xs font-bold border border-purple-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
                                         disabled={isSaving}
                                       >
                                         <option value="Not Done">Not Done</option>
                                         <option value="Done">Done</option>
                                       </select>
-                                      <div className="flex space-x-1">
+                                      <div className="flex gap-1">
                                         <button
                                           onClick={() => handleSaveEdit(history)}
                                           disabled={isSaving}
-                                          className="p-1 text-green-600 hover:text-green-800 disabled:opacity-50"
+                                          className="p-1.5 bg-green-100 text-green-600 rounded-md hover:bg-green-200 transition-colors disabled:opacity-50"
                                           title="Save changes"
                                         >
                                           {isSaving ? (
-                                            <div className="animate-spin h-4 w-4 border-2 border-green-600 border-t-transparent rounded-full"></div>
+                                            <div className="animate-spin h-3.5 w-3.5 border-2 border-green-600 border-t-transparent rounded-full"></div>
                                           ) : (
-                                            <Save className="h-4 w-4" />
+                                            <Save className="h-3.5 w-3.5" />
                                           )}
                                         </button>
                                         <button
                                           onClick={() => handleCancelEdit(history._id)}
                                           disabled={isSaving}
-                                          className="p-1 text-red-600 hover:text-red-800 disabled:opacity-50"
+                                          className="p-1.5 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors disabled:opacity-50"
                                           title="Cancel editing"
                                         >
-                                          <XCircle className="h-4 w-4" />
+                                          <XCircle className="h-3.5 w-3.5" />
                                         </button>
                                       </div>
                                     </div>
                                   ) : (
-                                    <div className="flex items-center justify-between">
-                                      <div>
+                                    <div className="flex items-center justify-between group">
+                                      <div className="flex-1">
                                         {!isEmpty(history.admin_done) &&
                                           history.admin_done.toString().trim() === "Done" ? (
-                                          <div className="flex items-center">
-                                            <div className="h-4 w-4 rounded border-gray-300 text-green-600 bg-green-100 mr-2 flex items-center justify-center">
-                                              <span className="text-xs text-green-600">✓</span>
-                                            </div>
-                                            <div className="flex flex-col">
-                                              <div className="font-medium text-green-700 text-sm">Done</div>
-                                            </div>
+                                          <div className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-extrabold uppercase tracking-wider border border-green-200">
+                                            <CheckCircle2 className="h-3 w-3 mr-1.5" />
+                                            Admin Done
                                           </div>
                                         ) : !isEmpty(history.admin_done) &&
                                           history.admin_done.toString().trim() === "Not Done" ? (
-                                          <div className="flex items-center text-red-500 text-sm">
-                                            <div className="h-4 w-4 rounded border-gray-300 bg-red-100 mr-2 flex items-center justify-center">
-                                              <span className="text-xs text-red-600">✗</span>
-                                            </div>
-                                            <span className="font-medium">Not Done</span>
+                                          <div className="inline-flex items-center px-2.5 py-1 bg-red-100 text-red-700 rounded-full text-[10px] font-extrabold uppercase tracking-wider border border-red-200">
+                                            <XCircle className="h-3 w-3 mr-1.5" />
+                                            Admin Refused
                                           </div>
                                         ) : (
-                                          <div className="flex items-center text-gray-400 text-sm">
-                                            <div className="h-4 w-4 rounded border-gray-300 mr-2"></div>
-                                            <span>Pending</span>
+                                          <div className="inline-flex items-center px-2.5 py-1 bg-yellow-100 text-yellow-700 rounded-full text-[10px] font-extrabold uppercase tracking-wider border border-yellow-200">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-yellow-400 animate-pulse mr-2" />
+                                            Awaiting Review
                                           </div>
                                         )}
                                       </div>
                                       <button
                                         onClick={() => handleEditClick(history)}
-                                        className="p-1 text-blue-600 hover:text-blue-800 ml-2"
-                                        title="Edit admin status"
+                                        className="p-1.5 text-purple-600 hover:bg-purple-100 rounded-md transition-all ml-2"
+                                        title="Quick Edit"
                                       >
-                                        <Edit className="h-4 w-4" />
+                                        <Edit className="h-3.5 w-3.5" />
                                       </button>
                                     </div>
                                   )}
                                 </td>
                               )}
 
-                              {/* SECOND: Admin Select Checkbox - Action Column */}
+                              {/* SECOND: Admin Select Checkbox - Action Column - Refined */}
                               {userRole === "admin" && (
-                                <td className="px-3 py-4 w-24">
+                                <td className="px-4 py-4 w-24 border-r border-green-50 bg-green-50/10">
                                   {!isEmpty(history.admin_done) &&
                                     (history.admin_done.toString().trim() === "Done" ||
                                       history.admin_done.toString().trim() === "Not Done") ? (
-                                    <div className="flex flex-col items-center">
+                                    <div className="flex flex-col items-center opacity-60">
                                       <div
-                                        className={`h-4 w-4 rounded border-gray-300 ${history.admin_done.toString().trim() === "Done"
-                                          ? "text-green-600 bg-green-100"
-                                          : "text-red-600 bg-red-100"
+                                        className={`p-1 rounded-full ${history.admin_done.toString().trim() === "Done"
+                                          ? "bg-green-100 text-green-600"
+                                          : "bg-red-100 text-red-600"
                                           }`}
                                       >
-                                        <span
-                                          className={`text-xs ${history.admin_done.toString().trim() === "Done"
-                                            ? "text-green-600"
-                                            : "text-red-600"
-                                            }`}
-                                        >
-                                          {history.admin_done.toString().trim() === "Done" ? "✓" : "✗"}
-                                        </span>
+                                        {history.admin_done.toString().trim() === "Done" ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
                                       </div>
-                                      <span
-                                        className={`text-xs mt-1 text-center font-medium ${history.admin_done.toString().trim() === "Done"
-                                          ? "text-green-600"
-                                          : "text-red-600"
-                                          }`}
-                                      >
-                                        {history.admin_done.toString().trim()}
-                                      </span>
+                                      <span className="text-[9px] mt-1 font-bold uppercase tracking-tight text-gray-500">Processed</span>
                                     </div>
                                   ) : (
-                                    <div className="flex flex-col items-center">
+                                    <div className="flex flex-col items-center gap-1">
                                       <input
                                         type="checkbox"
-                                        className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                        className="h-5 w-5 rounded border-green-300 text-green-600 focus:ring-green-500 transition-all cursor-pointer hover:scale-110"
                                         checked={selectedHistoryItems.some(item => item._id === history._id)}
                                         onChange={() => {
                                           setSelectedHistoryItems(prev =>
@@ -674,9 +684,7 @@ function Approval() {
                                           );
                                         }}
                                       />
-                                      <span className="text-[10px] text-gray-500 mt-1 uppercase font-semibold text-center leading-tight">
-                                        Mark<br />Done
-                                      </span>
+                                      <span className="text-[9px] font-extrabold text-green-700 uppercase leading-none">Select</span>
                                     </div>
                                   )}
                                 </td>

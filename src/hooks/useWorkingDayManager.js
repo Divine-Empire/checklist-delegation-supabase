@@ -200,6 +200,16 @@ export const useWorkingDayManager = () => {
         setWorkingDayModalOpen(true);
     };
 
+    useEffect(() => {
+        return () => {
+            // Cleanup on unmount or route change
+            document.body.classList.remove("modal-open", "overflow-hidden");
+            document.querySelectorAll(".modal-backdrop, .overlay, .fixed-overlay")
+                .forEach(el => el.remove());
+            document.body.style.pointerEvents = "auto";
+        };
+    }, []);
+
     return {
         fetchWorkingDays,
         handleWorkingDayChange,

@@ -3,6 +3,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import { Users, Filter, ChevronDown, Calendar as CalendarIcon, Info } from "lucide-react";
 import AdminLayout from "../components/layout/AdminLayout";
 import supabase from "../SupabaseClient";
 
@@ -13,7 +14,30 @@ const Calendar = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [tasksForDate, setTasksForDate] = useState([]);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [membersList, setMembersList] = useState([]);
+  const [selectedMember, setSelectedMember] = useState("all");
   const calendarRef = useRef(null);
+
+  // Get user role and name
+  const userRole = localStorage.getItem("role") || "user";
+  const userName = localStorage.getItem("user-name") || "";
+
+  // Fetch members for admin filter
+  const fetchMembers = async () => {
+    if (userRole !== "admin") return;
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('user_name')
+        .not('user_name', 'is', null)
+        .order('user_name', { ascending: true });
+
+      if (error) throw error;
+      setMembersList(data.map(u => u.user_name));
+    } catch (err) {
+      console.error("Error fetching members:", err);
+    }
+  };
 
   // Fetch tasks from Supabase
   const fetchTasks = async () => {
@@ -21,17 +45,16 @@ const Calendar = () => {
       setLoading(true);
       setError(null);
 
-      // Get user role and name from localStorage
-      const userRole = localStorage.getItem("role") || "user";
-      const userName = localStorage.getItem("user-name") || "";
-
       // Fetch checklist tasks
       let checklistQuery = supabase
         .from('checklist')
         .select('*');
 
-      if (userRole === 'user' && userName) {
+      // Role-based visibility
+      if (userRole === 'user') {
         checklistQuery = checklistQuery.eq('name', userName);
+      } else if (userRole === 'admin' && selectedMember !== 'all') {
+        checklistQuery = checklistQuery.eq('name', selectedMember);
       }
 
       const { data: checklistData, error: checklistError } = await checklistQuery;
@@ -46,8 +69,11 @@ const Calendar = () => {
         .from('delegation')
         .select('*');
 
-      if (userRole === 'user' && userName) {
+      // Role-based visibility
+      if (userRole === 'user') {
         delegationQuery = delegationQuery.eq('name', userName);
+      } else if (userRole === 'admin' && selectedMember !== 'all') {
+        delegationQuery = delegationQuery.eq('name', selectedMember);
       }
 
       const { data: delegationData, error: delegationError } = await delegationQuery;
@@ -101,14 +127,18 @@ const Calendar = () => {
   };
 
   useEffect(() => {
-    fetchTasks();
+    fetchMembers();
   }, []);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [selectedMember]);
 
   // Handle date click
   const handleDateClick = (arg) => {
     const clickedDate = arg.date;
     const formattedDate = clickedDate.toISOString().split('T')[0];
-    
+
     // Filter tasks for the clicked date
     const dateTasks = events.filter(event => {
       const eventDate = new Date(event.start).toISOString().split('T')[0];
@@ -180,9 +210,45 @@ const Calendar = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-100 py-6 px-4">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Task Calendar</h1>
-            <p className="text-gray-600">View and manage your tasks on the calendar</p>
+          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-200">
+                  <CalendarIcon className="w-6 h-6 text-white" />
+                </div>
+                <h1 className="text-3xl font-black text-gray-900 tracking-tight">Task Calendar</h1>
+              </div>
+              <p className="text-gray-500 font-medium ml-12">Monitor and manage schedule across the organization</p>
+            </div>
+
+            {/* Admin Filter Dropdown */}
+            {userRole === "admin" && (
+              <div className="relative group w-full md:w-72">
+                <label className="block text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1.5 ml-1">
+                  Filter by Member
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Users className="h-4 w-4 text-indigo-500" />
+                  </div>
+                  <select
+                    value={selectedMember}
+                    onChange={(e) => setSelectedMember(e.target.value)}
+                    className="block w-full pl-10 pr-10 py-3 bg-white border border-indigo-100 rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-bold text-gray-700 shadow-sm hover:shadow-md cursor-pointer"
+                  >
+                    <option value="all">All Members</option>
+                    {membersList.map((member, idx) => (
+                      <option key={idx} value={member}>
+                        {member}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none">
+                    <ChevronDown className="h-4 w-4 text-gray-400 group-hover:text-indigo-500 transition-colors" />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Calendar */}
@@ -242,15 +308,14 @@ const Calendar = () => {
                       <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="font-semibold text-gray-900">{event.title}</h3>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            event.extendedProps.status === 'done' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${event.extendedProps.status === 'done'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-blue-100 text-blue-800'
+                            }`}>
                             {event.extendedProps.status || 'pending'}
                           </span>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
                           <div>
                             <span className="font-medium">Department:</span> {event.extendedProps.department}
@@ -265,7 +330,7 @@ const Calendar = () => {
                             <span className="font-medium">Type:</span> {event.extendedProps.type}
                           </div>
                         </div>
-                        
+
                         {event.extendedProps.task.task_description && (
                           <div className="mt-3">
                             <p className="text-sm text-gray-700">
@@ -277,7 +342,7 @@ const Calendar = () => {
                     ))}
                   </div>
                 )}
-                
+
                 <div className="mt-6 flex justify-end">
                   <button
                     onClick={() => setShowTaskModal(false)}

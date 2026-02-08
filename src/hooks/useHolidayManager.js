@@ -2,14 +2,6 @@ import { useEffect } from 'react';
 import supabase from '../SupabaseClient';
 import useHolidayStore from '../stores/useHolidayStore';
 
-
-// Helper if not yet in dateUtils, but I'll assume I should check or duplicate for now safely.
-// Actually, I saw `formatDateToDisplay` in the original file. 
-// I will reuse `src/utils/dateUtils.js` if it has it, or add it there.
-// Checking previous view of `src/utils/dateUtils.js`: existing functions are `formatDate`, `formatDateToDDMMYYYY`.
-// The original `formatDateToDisplay` is DD-MM-YYYY. `formatDateToDDMMYYYY` seems to match. 
-// Let's check `src/utils/dateUtils.js` content first to be sure.
-
 export const useHolidayManager = () => {
     const {
         holidays,
@@ -41,6 +33,18 @@ export const useHolidayManager = () => {
         }
     };
 
+    useEffect(() => {
+        return () => {
+            // Cleanup on unmount or route change
+            document.body.classList.remove("modal-open");
+
+            document
+                .querySelectorAll(".modal-backdrop, .overlay, .fixed-overlay")
+                .forEach(el => el.remove());
+
+            document.body.style.pointerEvents = "auto";
+        };
+    }, []);
 
     const fetchHolidays = async () => {
         setFetchLoading(true);

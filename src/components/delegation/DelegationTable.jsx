@@ -61,7 +61,32 @@ const DelegationTable = ({ tasks }) => {
                             return (
                                 <tr key={index} className={`${isSelected ? "bg-purple-50" : ""} hover:bg-gray-50 ${getRowColor(item.color_code_for)}`}>
                                     <td className="px-2 py-4 text-xs text-gray-900">{index + 1}</td>
-                                    <td className="px-2 py-4">
+                                    <td className="px-2 py-4 text-center">
+                                        {item.task_start_date && (() => {
+                                            const startDate = new Date(item.task_start_date);
+                                            const today = new Date(new Date().setHours(0, 0, 0, 0));
+                                            const taskDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+
+                                            if (taskDateOnly < today) {
+                                                return (
+                                                    <div className="mb-1">
+                                                        <span className="bg-red-600 text-white text-[9px] font-black px-1 rounded-sm uppercase">Overdue</span>
+                                                    </div>
+                                                );
+                                            } else if (taskDateOnly.getTime() === today.getTime()) {
+                                                return (
+                                                    <div className="mb-1">
+                                                        <span className="bg-orange-500 text-white text-[9px] font-black px-1 rounded-sm uppercase">Today</span>
+                                                    </div>
+                                                );
+                                            } else {
+                                                return (
+                                                    <div className="mb-1">
+                                                        <span className="bg-blue-500 text-white text-[9px] font-black px-1 rounded-sm uppercase whitespace-nowrap">Upcoming</span>
+                                                    </div>
+                                                );
+                                            }
+                                        })()}
                                         <input
                                             type="checkbox"
                                             checked={isSelected}

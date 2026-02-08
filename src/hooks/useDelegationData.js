@@ -23,7 +23,7 @@ export const useDelegationData = () => {
     const [userRole, setUserRole] = useState("");
     const [username, setUsername] = useState("");
 
-    const { searchTerm, dateFilter, startDate, endDate } = useDelegationUIStore();
+    const { searchTerm, dateFilter, startDate, endDate, statusData } = useDelegationUIStore();
     const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
     useEffect(() => {
@@ -42,6 +42,10 @@ export const useDelegationData = () => {
         if (!delegation) return [];
         let filtered = delegation;
 
+        const itemHasStatus = (task) => {
+            return statusData && statusData[task.task_id] && statusData[task.task_id] !== "";
+        };
+
         if (debouncedSearchTerm) {
             filtered = filtered.filter((task) =>
                 Object.values(task).some(value =>
@@ -56,37 +60,39 @@ export const useDelegationData = () => {
         nextFewDays.setDate(nextFewDays.getDate() + 3);
         nextFewDays.setHours(23, 59, 59, 999);
 
-        // Date logic from original
+        // Date logic synchronized with SalesDataPage
         filtered = filtered.filter((task) => {
             if (!task.task_start_date) return false;
             const taskStartDate = new Date(task.task_start_date);
             if (isNaN(taskStartDate.getTime())) return false;
 
-            const isPending = task.submission_date === null || task.submission_date === undefined || task.submission_date === "";
-            const isUpcoming = taskStartDate <= nextFewDays;
+            const isPending = !task.submission_date && !itemHasStatus(task);
+
+            // Frequency-based visibility window
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const freq = (task.frequency || "").toLowerCase();
+
+            let visibilityLimit = new Date(today);
+            if (freq === "daily") {
+                visibilityLimit.setDate(today.getDate() + 2);
+            } else if (freq === "monthly") {
+                visibilityLimit = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+            } else if (freq.includes("weekly") || freq.includes("alternate") || freq.includes("fortnightly")) {
+                visibilityLimit.setDate(today.getDate() + 14);
+            } else {
+                visibilityLimit.setDate(today.getDate() + 30);
+            }
+            visibilityLimit.setHours(23, 59, 59, 999);
+
+            const isWithinVisibleWindow = taskStartDate <= visibilityLimit;
             const isOverduePending = taskStartDate < today && isPending;
 
-            // Simplified original logic:
             if (dateFilter === "overdue") return isOverduePending;
             if (dateFilter === "today") return taskStartDate.toDateString() === today.toDateString();
-            if (dateFilter === "upcoming") return taskStartDate > today;
+            if (dateFilter === "upcoming") return taskStartDate > today && isWithinVisibleWindow;
 
-            // Default "all" behavior from original code (lines 266-288) seems to ignore 'dateFilter' drop down 
-            // inside 'filteredDelegationTasks' memo?
-            // Wait, looking at original line 71: const [dateFilter, setDateFilter] = useState("all");
-            // But 'filteredDelegationTasks' (line 246) DOES NOT DEPEND ON 'dateFilter' state!
-            // It only used 'delegation' and 'debouncedSearchTerm'.
-            // The 'dateFilter' dropdown (line 611) updates state, but 'filteredDelegationTasks' logic (line 273) 
-            // hardcodes the "Today+Upcoming+Overdue" logic.
-            // *Correction*: The original code IGNORED the dateFilter dropdown for the logic! 
-            // The filter dropdown was UI but seemingly unconnected to the table filter in the original code snippet I read.
-            // Wait, let's look closer at line 292: dependency array `[delegation, debouncedSearchTerm]`. 
-            // `dateFilter` is MISSING.
-            // SO THE DATE FILTER DROPDOWN DID NOTHING IN THE ORIGINAL CODE?
-            // Or maybe I missed where it was used.
-            // I'll implement it properly here to actually filter if selected.
-
-            return isUpcoming || isOverduePending;
+            return isWithinVisibleWindow || isOverduePending;
         });
 
         // If I want to fix the bug where dateFilter was ignored, I can. 
@@ -100,7 +106,7 @@ export const useDelegationData = () => {
         // I don't see it used.
 
         return filtered;
-    }, [delegation, debouncedSearchTerm, dateFilter]);
+    }, [delegation, debouncedSearchTerm, dateFilter, statusData]);
 
     // Filter History Tasks
     const historyTasks = useMemo(() => {

@@ -1,41 +1,51 @@
+// src/stores/useHolidayStore.js
 import { create } from 'zustand';
 
 const useHolidayStore = create((set) => ({
-    // --- Holiday State ---
+    // Holidays state
     holidays: [],
-    modalOpen: false,
+    formData: { day: "", date: "", name: "" },
     editIndex: null,
-    formData: { day: "", date: "", name: "" }, // date is YYYY-MM-DD
+    modalOpen: false,
     loading: false,
     fetchLoading: false,
-
-    // --- Working Day State ---
-    workingDays: [],
-    workingDayModalOpen: false,
-    workingDayEditIndex: null,
-    workingDayFormData: { working_date: "", day: "" },
-    workingDayLoading: false,
-
-    // --- UI State ---
+    
+    // Working days state
     showWorkingDays: false,
-
-    // --- Actions ---
+    workingDays: [],
+    workingDayFormData: { working_date: "", day: "" },
+    workingDayEditIndex: null,
+    workingDayModalOpen: false,
+    workingDayLoading: false,
+    
+    // Setters
     setHolidays: (holidays) => set({ holidays }),
-    setModalOpen: (open) => set({ modalOpen: open }),
-    setEditIndex: (index) => set({ editIndex: index }),
-    setFormData: (data) => set((state) => ({ formData: { ...state.formData, ...data } })),
-    resetFormData: () => set({ formData: { day: "", date: "", name: "" } }),
+    setFormData: (formData) => set((state) => ({
+        formData: { ...state.formData, ...formData }
+    })),
+    setEditIndex: (editIndex) => set({ editIndex }),
+    setModalOpen: (modalOpen) => set({ modalOpen }),
     setLoading: (loading) => set({ loading }),
-    setFetchLoading: (loading) => set({ fetchLoading: loading }),
-
+    setFetchLoading: (fetchLoading) => set({ fetchLoading }),
+    
+    setShowWorkingDays: (showWorkingDays) => set({ showWorkingDays }),
     setWorkingDays: (workingDays) => set({ workingDays }),
-    setWorkingDayModalOpen: (open) => set({ workingDayModalOpen: open }),
-    setWorkingDayEditIndex: (index) => set({ workingDayEditIndex: index }),
-    setWorkingDayFormData: (data) => set((state) => ({ workingDayFormData: { ...state.workingDayFormData, ...data } })),
-    resetWorkingDayFormData: () => set({ workingDayFormData: { working_date: "", day: "" } }),
-    setWorkingDayLoading: (loading) => set({ workingDayLoading: loading }),
-
-    setShowWorkingDays: (show) => set({ showWorkingDays: show }),
+    setWorkingDayFormData: (workingDayFormData) => set((state) => ({
+        workingDayFormData: { ...state.workingDayFormData, ...workingDayFormData }
+    })),
+    setWorkingDayEditIndex: (workingDayEditIndex) => set({ workingDayEditIndex }),
+    setWorkingDayModalOpen: (workingDayModalOpen) => set({ workingDayModalOpen }),
+    setWorkingDayLoading: (workingDayLoading) => set({ workingDayLoading }),
+    
+    resetFormData: () => set({ 
+        formData: { day: "", date: "", name: "" },
+        editIndex: null 
+    }),
+    
+    resetWorkingDayFormData: () => set({
+        workingDayFormData: { working_date: "", day: "" },
+        workingDayEditIndex: null
+    })
 }));
 
 export default useHolidayStore;
