@@ -88,8 +88,10 @@ export const findEndOfWeekDate = (date, weekNumber, workingDays) => {
 
 export const formatDateTimeForStorage = (date, time) => {
   if (!date || !time) return "";
-  const dateString = date.toISOString().split("T")[0];
-  return `${dateString}T${time}:00`;
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+  return `${year}-${month}-${day}T${time}:00`;
 };
 
 // --- New Dashboard Specific Date Utils ---

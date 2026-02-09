@@ -697,35 +697,6 @@ const Setting = () => {
                             </select>
                           </div>
 
-                          {/* <div className="sm:col-span-3">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Page Access
-                            </label>
-                            <div className="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 sm:text-sm max-h-40 overflow-y-auto">
-                              {department && department.length > 0 ? (
-                                [...new Set(department.map(dept => dept.department))]
-                                  .filter(deptName => deptName)
-                                  .map((deptName, index) => (
-                                    <div key={index} className="flex items-center mb-2 last:mb-0">
-                                      <input
-                                        type="checkbox"
-                                        id={`page_access_${index}`}
-                                        name="page_access"
-                                        value={deptName}
-                                        checked={userForm.page_access.includes(deptName)}
-                                        onChange={handleUserInputChange}
-                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                      />
-                                      <label htmlFor={`page_access_${index}`} className="ml-2 block text-sm text-gray-900 cursor-pointer">
-                                        {deptName}
-                                      </label>
-                                    </div>
-                                  ))
-                              ) : (
-                                <p className="text-gray-500 italic">No departments available</p>
-                              )}
-                            </div>
-                          </div> */}
 
                           <div className="sm:col-span-3">
                             <label htmlFor="status" className="block text-sm font-medium text-gray-700">
@@ -1080,6 +1051,9 @@ const Setting = () => {
                       Email
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Password
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Phone No.
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1120,6 +1094,9 @@ const Setting = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{user?.email_id}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{user?.password}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{user?.number}</div>

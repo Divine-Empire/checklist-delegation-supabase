@@ -144,7 +144,8 @@ export const useAssignTask = () => {
                 }
 
                 if (taskDateStr) {
-                    const taskDateObj = new Date(taskDateStr.split("/").reverse().join("-"));
+                    const [d, m, y] = taskDateStr.split("/").map(Number);
+                    const taskDateObj = new Date(y, m - 1, d);
                     if (taskDateObj <= endDate) {
                         const taskDateTimeStr = formatDateTimeForStorage(taskDateObj, time);
                         tasks.push({
