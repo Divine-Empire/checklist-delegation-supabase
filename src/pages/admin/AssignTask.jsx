@@ -13,15 +13,14 @@ export default function AssignTask() {
   const userRole = localStorage.getItem('role');
   const username = localStorage.getItem('user-name');
 
-  const filteredDoerNames = userRole === 'admin'
-    ? doerName
-    : doerName.filter(doer => doer?.toLowerCase() === username?.toLowerCase());
+  const filteredDoerNames = doerName;
 
   const dispatch = useDispatch();
 
   useEffect(() => {
     dispatch(uniqueDepartmentData(username));
     dispatch(uniqueGivenByData());
+    dispatch(uniqueDoerNameData());
   }, [dispatch, username]);
 
   // Use the custom hook and store
@@ -40,11 +39,7 @@ export default function AssignTask() {
   } = useAssignTaskStore();
 
 
-  useEffect(() => {
-    if (formData.department) {
-      dispatch(uniqueDoerNameData(formData.department));
-    }
-  }, [dispatch, formData.department]);
+
 
   const frequencies = [
     { value: "one-time", label: "One Time (No Recurrence)" },

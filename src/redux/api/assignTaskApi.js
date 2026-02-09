@@ -84,24 +84,20 @@ export const fetchUniqueGivenByDataApi = async () => {
   }
 }
 
-export const fetchUniqueDoerNameDataApi = async (department) => {
+export const fetchUniqueDoerNameDataApi = async () => {
   try {
-    console.log("Department passed:", department);
-
     const { data, error } = await supabase
       .from("users")
-      .select("user_name, role, user_access")
-      .or(`user_access.ilike.%${department}%,role.eq.admin`) // ✅ match department OR admin role
+      .select("user_name")
       .eq("status", "active")
-      .eq("role", "user") // only active users
       .order("user_name", { ascending: true });
 
     const uniqueDoerName = [...new Set(data?.map((d) => d.user_name))];
 
     if (!error) {
-      console.log("Fetched successfully", uniqueDoerName);
+      console.log("Fetched all active users successfully", uniqueDoerName);
     } else {
-      console.log("Error when fetching data", error);
+      console.log("Error when fetching user names", error);
     }
     return uniqueDoerName;
   } catch (error) {

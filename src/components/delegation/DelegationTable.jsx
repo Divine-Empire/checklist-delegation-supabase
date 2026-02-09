@@ -23,13 +23,7 @@ const DelegationTable = ({ tasks }) => {
         }
     };
 
-    const selectableTasks = tasks.filter(item => {
-        if (!item.task_start_date) return true;
-        const taskDate = new Date(item.task_start_date);
-        const today = new Date(new Date().setHours(0, 0, 0, 0));
-        const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
-        return taskDateOnly <= today;
-    });
+    const selectableTasks = tasks;
 
     return (
         <div className="rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
@@ -108,7 +102,6 @@ const DelegationTable = ({ tasks }) => {
                                             checked={isSelected}
                                             onChange={(e) => toggleSelection(item.task_id, e.target.checked)}
                                             className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            disabled={isUpcoming}
                                         />
                                     </td>
                                     <td className="px-2 py-4 text-xs text-gray-900">{item.task_id}</td>

@@ -4,7 +4,7 @@ export const fetchUserDetailsApi = async () => {
   try {
     const { data, error } = await supabase
       .from("users")
-      .select('*, user_access, leave_date, leave_end_date, remark, employee_id') // Add employee_id
+      .select('*, user_access, page_access, leave_date, leave_end_date, remark, employee_id') // Add employee_id and page_access
       .not("user_name", "is", null)
       .neq("user_name", "");
 
@@ -104,7 +104,8 @@ export const createUserApi = async (newUser) => {
           employee_id: newUser.employee_id, // Add this line
           role: newUser.role,
           status: newUser.status,
-          user_access: newUser.user_access
+          user_access: newUser.user_access,
+          page_access: newUser.page_access
         }
       ])
       .select()
@@ -134,7 +135,8 @@ export const updateUserDataApi = async ({ id, updatedUser }) => {
       employee_id: updatedUser.employee_id, // Add this line
       role: updatedUser.role,
       status: updatedUser.status,
-      user_access: updatedUser.user_access
+      user_access: updatedUser.user_access,
+      page_access: updatedUser.page_access
     };
 
     // Add leave data if provided

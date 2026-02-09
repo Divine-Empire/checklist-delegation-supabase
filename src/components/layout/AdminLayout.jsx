@@ -606,7 +606,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                 rel="noopener noreferrer"
                 className="sm:hidden sm:hover:underline flex items-center justify-center gap-1 text-gray-900 transition-colors duration-300"
               >
-                All Right Reserved by -
+                Powerd by -
                 <span className="font-bold drop-shadow-md text-gray-900">
                   Botivate
                 </span>
@@ -618,7 +618,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                 rel="noopener noreferrer"
                 className="hidden hover:underline sm:flex items-center justify-center gap-1 text-white/90 hover:text-white transition-colors duration-300"
               >
-                All Right Reserved by -
+                Powerd by -
                 <span className="font-bold text-white drop-shadow-md">
                   Botivate
                 </span>
