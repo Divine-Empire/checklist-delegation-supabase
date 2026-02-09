@@ -23,6 +23,14 @@ const DelegationTable = ({ tasks }) => {
         }
     };
 
+    const selectableTasks = tasks.filter(item => {
+        if (!item.task_start_date) return true;
+        const taskDate = new Date(item.task_start_date);
+        const today = new Date(new Date().setHours(0, 0, 0, 0));
+        const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+        return taskDateOnly <= today;
+    });
+
     return (
         <div className="rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
             <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-3 sm:p-4">
@@ -38,8 +46,8 @@ const DelegationTable = ({ tasks }) => {
                                 <input
                                     type="checkbox"
                                     className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                                    checked={tasks.length > 0 && selectedItems.size === tasks.length}
-                                    onChange={(e) => selectAll(tasks.map(t => t.task_id), e.target.checked)}
+                                    checked={selectableTasks.length > 0 && selectedItems.size === selectableTasks.length}
+                                    onChange={(e) => selectAll(selectableTasks.map(t => t.task_id), e.target.checked)}
                                 />
                             </th>
                             <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Task ID</th>
@@ -58,6 +66,14 @@ const DelegationTable = ({ tasks }) => {
                     <tbody className="bg-white divide-y divide-gray-200">
                         {tasks.length > 0 ? tasks.map((item, index) => {
                             const isSelected = selectedItems.has(item.task_id);
+                            const isUpcoming = (() => {
+                                if (!item.task_start_date) return false;
+                                const startDate = new Date(item.task_start_date);
+                                const today = new Date(new Date().setHours(0, 0, 0, 0));
+                                const taskDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+                                return taskDateOnly > today;
+                            })();
+
                             return (
                                 <tr key={index} className={`${isSelected ? "bg-purple-50" : ""} hover:bg-gray-50 ${getRowColor(item.color_code_for)}`}>
                                     <td className="px-2 py-4 text-xs text-gray-900">{index + 1}</td>
@@ -91,7 +107,8 @@ const DelegationTable = ({ tasks }) => {
                                             type="checkbox"
                                             checked={isSelected}
                                             onChange={(e) => toggleSelection(item.task_id, e.target.checked)}
-                                            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            disabled={isUpcoming}
                                         />
                                     </td>
                                     <td className="px-2 py-4 text-xs text-gray-900">{item.task_id}</td>

@@ -19,6 +19,17 @@ const HolidayList = () => {
     const [workingDayLoading, setWorkingDayLoading] = useState(false);
     const [showWorkingDays, setShowWorkingDays] = useState(false);
 
+    // Filter State
+    const [holidayMonthFilter, setHolidayMonthFilter] = useState("All");
+    const [holidayYearFilter, setHolidayYearFilter] = useState("All");
+    const [workingMonthFilter, setWorkingMonthFilter] = useState("All");
+    const [workingYearFilter, setWorkingYearFilter] = useState("All");
+
+    const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+
     // Fetch holidays and working days from Supabase on component mount
     useEffect(() => {
         fetchHolidaysFromSupabase();
@@ -436,6 +447,42 @@ const HolidayList = () => {
         setWorkingDayModalOpen(true);
     };
 
+    // Filter Logic
+    const getFilteredHolidays = () => {
+        return holidays.filter(h => {
+            const [d, m, y] = h.date.split("-");
+            const monthMatch = holidayMonthFilter === "All" || months[parseInt(m) - 1] === holidayMonthFilter;
+            const yearMatch = holidayYearFilter === "All" || y === holidayYearFilter;
+            return monthMatch && yearMatch;
+        });
+    };
+
+    const getFilteredWorkingDays = () => {
+        return workingDays.filter(wd => {
+            const [d, m, y] = wd.working_date.split("-");
+            const monthMatch = workingMonthFilter === "All" || months[parseInt(m) - 1] === workingMonthFilter;
+            const yearMatch = workingYearFilter === "All" || y === workingYearFilter;
+            return monthMatch && yearMatch;
+        });
+    };
+
+    const getAvailableYears = (data, dateKey) => {
+        const years = new Set();
+        data.forEach(item => {
+            const date = item[dateKey];
+            if (date) {
+                const year = date.split("-")[2];
+                if (year) years.add(year);
+            }
+        });
+        return Array.from(years).sort((a, b) => b - a);
+    };
+
+    const filteredHolidays = getFilteredHolidays();
+    const filteredWorkingDays = getFilteredWorkingDays();
+    const holidayYears = getAvailableYears(holidays, "date");
+    const workingYears = getAvailableYears(workingDays, "working_date");
+
     return (
         <AdminLayout>
             <div className="space-y-4 sm:space-y-6 p-2 sm:p-0">
@@ -466,10 +513,28 @@ const HolidayList = () => {
 
                 {!showWorkingDays && (
                     <div className="rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
-                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-3 sm:p-4">
+                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <h2 className="text-purple-700 font-medium text-sm sm:text-base">
                                 Holiday Records
                             </h2>
+                            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                                <select
+                                    value={holidayMonthFilter}
+                                    onChange={(e) => setHolidayMonthFilter(e.target.value)}
+                                    className="px-2 py-1 text-xs border border-purple-200 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white"
+                                >
+                                    <option value="All">All Months</option>
+                                    {months.map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                                <select
+                                    value={holidayYearFilter}
+                                    onChange={(e) => setHolidayYearFilter(e.target.value)}
+                                    className="px-2 py-1 text-xs border border-purple-200 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white"
+                                >
+                                    <option value="All">All Years</option>
+                                    {holidayYears.map(y => <option key={y} value={y}>{y}</option>)}
+                                </select>
+                            </div>
                         </div>
 
                         {fetchLoading ? (
@@ -478,30 +543,30 @@ const HolidayList = () => {
                                 <p className="text-purple-600 text-sm sm:text-base">Loading holidays...</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-purple-200">
                                 <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
+                                    <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                                         <tr>
-                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">
                                                 #
                                             </th>
-                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">
                                                 Day
                                             </th>
-                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">
                                                 Date
                                             </th>
-                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
+                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px] bg-gray-50">
                                                 Holiday Name
                                             </th>
-                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">
                                                 Action
                                             </th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {holidays.length > 0 ? (
-                                            holidays.map((h, i) => (
+                                        {filteredHolidays.length > 0 ? (
+                                            filteredHolidays.map((h, i) => (
                                                 <tr key={h.id || i} className="hover:bg-gray-50">
                                                     <td className="px-3 sm:px-6 py-2 sm:py-4">
                                                         <div className="text-xs sm:text-sm font-medium text-gray-900">
@@ -664,38 +729,56 @@ const HolidayList = () => {
                 {showWorkingDays && (
                     <>
                         <div className="rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden mt-6">
-                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-3 sm:p-4 flex justify-between items-center">
+                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                 <h2 className="text-purple-700 font-medium text-sm sm:text-base">
                                     📅 Working Days Records
                                 </h2>
-                                <button
-                                    onClick={handleAddWorkingDay}
-                                    className="rounded-md bg-purple-600 py-1.5 px-3 text-white hover:bg-purple-700 text-xs sm:text-sm"
-                                >
-                                    + Add Working Day
-                                </button>
+                                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                                    <select
+                                        value={workingMonthFilter}
+                                        onChange={(e) => setWorkingMonthFilter(e.target.value)}
+                                        className="px-2 py-1 text-xs border border-purple-200 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white"
+                                    >
+                                        <option value="All">All Months</option>
+                                        {months.map(m => <option key={m} value={m}>{m}</option>)}
+                                    </select>
+                                    <select
+                                        value={workingYearFilter}
+                                        onChange={(e) => setWorkingYearFilter(e.target.value)}
+                                        className="px-2 py-1 text-xs border border-purple-200 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white"
+                                    >
+                                        <option value="All">All Years</option>
+                                        {workingYears.map(y => <option key={y} value={y}>{y}</option>)}
+                                    </select>
+                                    <button
+                                        onClick={handleAddWorkingDay}
+                                        className="rounded-md bg-purple-600 py-1.5 px-3 text-white hover:bg-purple-700 text-xs sm:text-sm"
+                                    >
+                                        + Add Working Day
+                                    </button>
+                                </div>
                             </div>
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-purple-200">
                                 <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
+                                    <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                                         <tr>
-                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">
                                                 #
                                             </th>
-                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">
                                                 Working Date
                                             </th>
-                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">
                                                 Day
                                             </th>
-                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50">
                                                 Action
                                             </th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {workingDays.length > 0 ? (
-                                            workingDays.map((wd, i) => (
+                                        {filteredWorkingDays.length > 0 ? (
+                                            filteredWorkingDays.map((wd, i) => (
                                                 <tr key={wd.id || i} className="hover:bg-gray-50">
                                                     <td className="px-3 sm:px-6 py-2 sm:py-4">
                                                         <div className="text-xs sm:text-sm font-medium text-gray-900">
@@ -720,12 +803,12 @@ const HolidayList = () => {
                                                                 onClick={() => handleWorkingDayEdit(i)}
                                                                 title="Edit"
                                                             />
-                                                            <Trash2
+                                                            {/* <Trash2
                                                                 size={16}
                                                                 className="text-red-600 hover:text-red-800 cursor-pointer"
                                                                 onClick={() => handleWorkingDayDelete(i)}
                                                                 title="Delete"
-                                                            />
+                                                            /> */}
                                                         </div>
                                                     </td>
                                                 </tr>

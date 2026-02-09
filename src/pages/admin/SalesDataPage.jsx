@@ -611,9 +611,20 @@ function AccountDataPage() {
       const checked = e.target.checked
       console.log(`Select all clicked: ${checked}`)
       if (checked) {
-        const allIds = filteredAccountData.map((item) => item.task_id)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const allIds = filteredAccountData
+          .filter(item => {
+            if (!item.task_start_date) return true;
+            const taskDate = new Date(item.task_start_date);
+            const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+            return taskDateOnly <= today; // Only select if not upcoming
+          })
+          .map((item) => item.task_id)
+
         setSelectedItems(new Set(allIds))
-        console.log(`Selected all items: ${allIds}`)
+        console.log(`Selected all items (excluding upcoming): ${allIds}`)
       } else {
         setSelectedItems(new Set())
         setAdditionalData({})
@@ -1366,6 +1377,7 @@ function AccountDataPage() {
                                 const startDate = new Date(account.task_start_date);
                                 const today = new Date(new Date().setHours(0, 0, 0, 0));
                                 const taskDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+                                const isUpcoming = taskDateOnly > today;
 
                                 if (taskDateOnly < today) {
                                   return (
@@ -1389,9 +1401,16 @@ function AccountDataPage() {
                               })()}
                               <input
                                 type="checkbox"
-                                className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                 checked={isSelected}
                                 onChange={(e) => handleCheckboxClick(e, account.task_id)}
+                                disabled={(() => {
+                                  if (!account.task_start_date) return false;
+                                  const startDate = new Date(account.task_start_date);
+                                  const today = new Date(new Date().setHours(0, 0, 0, 0));
+                                  const taskDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+                                  return taskDateOnly > today;
+                                })()}
                               />
                             </td>
                           )}

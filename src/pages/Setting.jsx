@@ -29,6 +29,9 @@ const Setting = () => {
 
   // Fetch device logs function
   const fetchDeviceLogsAndUpdateStatus = async () => {
+    let abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), 10000); // 10 second timeout
+
     try {
       setIsRefreshing(true);
       const today = new Date().toISOString().split('T')[0];
@@ -36,29 +39,38 @@ const Setting = () => {
       const IN_API_URL = `http://139.167.179.193:90/api/v2/WebAPI/GetDeviceLogs?APIKey=205511032522&SerialNumber=E03C1CB34D83AA02&FromDate=${today}&ToDate=${today}`;
       const OUT_API_URL = `http://139.167.179.193:90/api/v2/WebAPI/GetDeviceLogs?APIKey=205511032522&SerialNumber=E03C1CB36042AA02&FromDate=${today}&ToDate=${today}`;
 
-      const [inResponse, outResponse] = await Promise.all([
-        fetch(IN_API_URL),
-        fetch(OUT_API_URL)
+      const responses = await Promise.allSettled([
+        fetch(IN_API_URL, { signal: abortController.signal }),
+        fetch(OUT_API_URL, { signal: abortController.signal })
       ]);
 
-      const inLogs = await inResponse.json();
-      const outLogs = await outResponse.json();
+      const logs = [];
+      for (const res of responses) {
+        if (res.status === 'fulfilled' && res.value.ok) {
+          try {
+            const data = await res.value.json();
+            if (Array.isArray(data)) logs.push(...data);
+          } catch (e) {
+            console.warn('Error parsing log JSON:', e);
+          }
+        }
+      }
 
-      const allLogs = [...inLogs, ...outLogs];
+      if (logs.length === 0) {
+        return;
+      }
 
       // Sort logs by date (latest first)
-      allLogs.sort((a, b) => new Date(b.LogDate) - new Date(a.LogDate));
+      logs.sort((a, b) => new Date(b.LogDate) - new Date(a.LogDate));
 
       // Simple logic: Check latest punch for each employee
       const employeeStatus = {};
 
-      allLogs.forEach(log => {
+      logs.forEach(log => {
         const employeeCode = log.EmployeeCode;
         const punchDirection = log.PunchDirection?.toLowerCase();
 
-        // Only process if this employee hasn't been processed yet (we want the latest punch)
-        if (!employeeStatus[employeeCode]) {
-          // Simple rule: IN = active, OUT = inactive
+        if (employeeCode && !employeeStatus[employeeCode]) {
           employeeStatus[employeeCode] = {
             status: punchDirection === 'in' ? 'active' : 'inactive',
             logDate: log.LogDate,
@@ -75,32 +87,21 @@ const Setting = () => {
             .select('*')
             .eq('employee_id', employeeCode);
 
-          if (userError) {
-            console.error('Error finding user:', userError);
-            return;
-          }
+          if (userError) return;
 
           if (users && users.length > 0) {
             const user = users[0];
 
             // Only update if status changed
             if (user.status !== statusInfo.status) {
-              const updateData = {
-                status: statusInfo.status
-              };
-
-              const { data, error } = await supabase
+              await supabase
                 .from('users')
-                .update(updateData)
+                .update({ status: statusInfo.status })
                 .eq('id', user.id);
-
-              if (error) {
-                console.error(`Error updating user ${user.user_name}:`, error);
-              }
             }
           }
         } catch (error) {
-          console.error(`Error processing employee ${employeeCode}:`, error);
+          // Suppress errors for background status updates
         }
       });
 
@@ -108,8 +109,13 @@ const Setting = () => {
       dispatch(userDetails());
 
     } catch (error) {
-      console.error('Error fetching device logs:', error);
+      if (error.name === 'AbortError') {
+        console.warn('Device log fetch timed out');
+      } else {
+        console.warn('Error fetching device logs:', error.message);
+      }
     } finally {
+      clearTimeout(timeoutId);
       setIsRefreshing(false);
     }
   };
@@ -321,8 +327,10 @@ const Setting = () => {
       await dispatch(createUser(newUser)).unwrap();
       resetUserForm();
       setShowUserModal(false);
+      alert('User created successfully');
     } catch (error) {
       console.error('Error adding user:', error);
+      alert(error.message || 'Error adding user. User might already exist.');
     }
   };
 
@@ -454,7 +462,7 @@ const Setting = () => {
 
   // Filtered users for leave tab
   const filteredLeaveUsers = userData?.filter(user =>
-    !leaveUsernameFilter || user.user_name.toLowerCase().includes(leaveUsernameFilter.toLowerCase())
+    user && user.user_name && (!leaveUsernameFilter || user.user_name.toLowerCase().includes(leaveUsernameFilter.toLowerCase()))
   );
 
   // Helper functions for styling
@@ -502,7 +510,7 @@ const Setting = () => {
                 <Building size={18} />
                 Departments
               </button>
-              <button
+              {/* <button
                 className={`flex px-4 py-3 text-sm font-medium ${activeTab === 'leave' ? 'bg-purple-600 text-white' : 'bg-white text-purple-600 hover:bg-purple-50'}`}
                 onClick={() => {
                   handleTabChange('leave');
@@ -511,7 +519,7 @@ const Setting = () => {
               >
                 <Calendar size={18} />
                 Leave Management
-              </button>
+              </button> */}
             </div>
 
             {/* Add button - hide for leave tab */}
@@ -552,7 +560,7 @@ const Setting = () => {
                       {isEditing ? 'Edit User' : 'Create New User'}
                     </h3>
                     <div className="mt-6">
-                      <form onSubmit={isEditing ? handleUpdateUser : handleAddUser}>
+                      <form onSubmit={isEditing ? handleUpdateUser : handleAddUser} autoComplete="off">
                         <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                           <div className="sm:col-span-3">
                             <label htmlFor="username" className="block text-sm font-medium text-gray-700">
@@ -593,6 +601,7 @@ const Setting = () => {
                                 type="password"
                                 name="password"
                                 id="password"
+                                autoComplete="new-password"
                                 value={userForm.password}
                                 onChange={handleUserInputChange}
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -738,7 +747,7 @@ const Setting = () => {
                       {currentDeptId ? 'Edit Department' : 'Create New Department'}
                     </h3>
                     <div className="mt-6">
-                      <form onSubmit={currentDeptId ? handleUpdateDepartment : handleAddDepartment}>
+                      <form onSubmit={currentDeptId ? handleUpdateDepartment : handleAddDepartment} autoComplete="off">
                         <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                           <div className="sm:col-span-6">
                             <label htmlFor="name" className="block text-sm font-medium text-gray-700">
@@ -818,7 +827,7 @@ const Setting = () => {
                         className="w-48 pl-10 pr-8 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                       />
                       <datalist id="leaveUsernameOptions">
-                        {userData?.map(user => (
+                        {userData?.map(user => user && (
                           <option key={user.id} value={user.user_name} />
                         ))}
                       </datalist>
@@ -895,7 +904,7 @@ const Setting = () => {
                       <input
                         type="checkbox"
                         onChange={handleSelectAll}
-                        checked={selectedUsers.length === filteredLeaveUsers?.length && filteredLeaveUsers?.length > 0}
+                        checked={filteredLeaveUsers?.length > 0 && selectedUsers.length === filteredLeaveUsers.length}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </th>
@@ -968,7 +977,7 @@ const Setting = () => {
                       className="w-48 pl-10 pr-8 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                     />
                     <datalist id="usernameOptions">
-                      {userData?.map(user => (
+                      {userData?.map(user => user && (
                         <option key={user.id} value={user.user_name} />
                       ))}
                     </datalist>
@@ -1000,7 +1009,7 @@ const Setting = () => {
                       >
                         All Usernames
                       </button>
-                      {userData?.map(user => (
+                      {userData?.map(user => user && (
                         <button
                           key={user.id}
                           onClick={() => handleUsernameFilterSelect(user.user_name)}
@@ -1048,6 +1057,8 @@ const Setting = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {userData
                     ?.filter(user =>
+                      user &&
+                      user.user_name &&
                       user.user_name !== 'admin' &&
                       user.user_name !== 'DSMC' && (
                         !usernameFilter || user.user_name.toLowerCase().includes(usernameFilter.toLowerCase()))

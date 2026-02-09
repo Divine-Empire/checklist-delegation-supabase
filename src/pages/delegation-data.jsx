@@ -18,7 +18,7 @@ const CONFIG = {
 
 
 function DelegationPage({ searchTerm, nameFilter, freqFilter, setNameFilter, setFreqFilter }) {
- const [successMessage, setSuccessMessage] = useState("")
+  const [successMessage, setSuccessMessage] = useState("")
   const [error, setError] = useState(null)
   const [userRole, setUserRole] = useState("")
   const [username, setUsername] = useState("")
@@ -28,11 +28,11 @@ function DelegationPage({ searchTerm, nameFilter, freqFilter, setNameFilter, set
 
   const { delegationTasks, loading } = useSelector((state) => state.quickTask)
   const dispatch = useDispatch()
-useEffect(()=>{
-  dispatch(uniqueDelegationTaskData())
-},[dispatch])
+  useEffect(() => {
+    dispatch(uniqueDelegationTaskData())
+  }, [dispatch])
 
- // Handle checkbox selection
+  // Handle checkbox selection
   const handleCheckboxChange = (taskId) => {
     if (selectedTasks.includes(taskId)) {
       setSelectedTasks(selectedTasks.filter(task_id => task_id !== taskId))
@@ -43,27 +43,39 @@ useEffect(()=>{
 
   // Select all checkboxes
   const handleSelectAll = () => {
-    if (selectedTasks.length === filteredTasks.length) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const selectableTaskIds = filteredTasks
+      .filter(task => {
+        if (!task.task_start_date) return true;
+        const taskDate = new Date(task.task_start_date);
+        const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+        return taskDateOnly <= today;
+      })
+      .map(task => task.task_id);
+
+    if (selectedTasks.length === selectableTaskIds.length && selectableTaskIds.length > 0) {
       setSelectedTasks([])
     } else {
-      setSelectedTasks(filteredTasks.map(task => task_id))
+      setSelectedTasks(selectableTaskIds)
     }
   }
 
   // Delete selected tasks
   const handleDeleteSelected = async () => {
     if (selectedTasks.length === 0) return
-    
+
     setIsDeleting(true)
     try {
       console.log(selectedTasks);
-      
+
       await dispatch(deleteDelegationTask(selectedTasks)).unwrap()
       setSelectedTasks([])
       setSuccessMessage("Tasks deleted successfully")
       // Refresh the task list
       dispatch(uniqueDelegationTaskData())
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(""), 3000)
     } catch (error) {
@@ -98,7 +110,7 @@ useEffect(()=>{
 
   // const fetchData = useCallback(async () => {
   //   if (!isInitialized || !username) return
-    
+
   //   try {
   //   //  setLoading(true)
   //     setError(null)
@@ -106,7 +118,7 @@ useEffect(()=>{
   //     const tasksRes = await fetch(`${CONFIG.APPS_SCRIPT_URL}?sheet=${CONFIG.SOURCE_SHEET_NAME}&action=fetch`)
 
   //     if (!tasksRes.ok) throw new Error("Failed to fetch tasks")
-      
+
   //     const tasksData = await tasksRes.json()
 
   //     const currentUsername = username.toLowerCase()
@@ -137,31 +149,31 @@ useEffect(()=>{
 
   useEffect(() => {
     if (isInitialized) {
-     // fetchData()
-     dispatch(uniqueDelegationTaskData())
+      // fetchData()
+      dispatch(uniqueDelegationTaskData())
     }
   }, [dispatch, isInitialized])
 
   const filteredTasks = useMemo(() => {
     let filtered = delegationTasks;
-    
-    filtered = filtered.filter(task =>
-  task.task_description?.toLowerCase().includes(searchTerm.toLowerCase())
-);
 
-    
+    filtered = filtered.filter(task =>
+      task.task_description?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+
     if (nameFilter) {
       filtered = filtered.filter(task => task.name === nameFilter)
     }
-    
+
     if (freqFilter) {
       filtered = filtered.filter(task => task.frequency === freqFilter)
     }
-    
+
     return filtered
   }, [delegationTasks, searchTerm, nameFilter, freqFilter])
 
-  
+
 
   return (
     <>
@@ -182,8 +194,8 @@ useEffect(()=>{
       {error && (
         <div className="mt-4 bg-red-50 p-4 rounded-md text-red-800 text-center">
           {error}{" "}
-          <button 
-            onClick={fetchData} 
+          <button
+            onClick={fetchData}
             className="underline ml-2 hover:text-red-600"
           >
             Try again
@@ -201,7 +213,7 @@ useEffect(()=>{
 
       {/* Main Content */}
       {!error && isInitialized && !loading && (
-         <div className="mt-4 rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
+        <div className="mt-4 rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-4 flex justify-between items-center">
             <div>
               <h2 className="text-purple-700 font-medium">Delegation Tasks</h2>
@@ -209,7 +221,7 @@ useEffect(()=>{
                 {CONFIG.PAGE_CONFIG.description} ({filteredTasks.length} tasks)
               </p>
             </div>
-            
+
             {/* Delete selected button */}
             {selectedTasks.length > 0 && (
               <button
@@ -231,7 +243,17 @@ useEffect(()=>{
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
                     <input
                       type="checkbox"
-                      checked={selectedTasks.length === filteredTasks.length && filteredTasks.length > 0}
+                      checked={(() => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const selectableTasks = filteredTasks.filter(task => {
+                          if (!task.task_start_date) return true;
+                          const taskDate = new Date(task.task_start_date);
+                          const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+                          return taskDateOnly <= today;
+                        });
+                        return selectedTasks.length === selectableTasks.length && selectableTasks.length > 0;
+                      })()}
                       onChange={handleSelectAll}
                       className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                     />
@@ -257,7 +279,7 @@ useEffect(()=>{
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50">
                     TASK START DATE
                   </th>
-                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50">
                     TASK END DATE
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -274,14 +296,21 @@ useEffect(()=>{
 
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredTasks.length > 0 ? (
-                  filteredTasks.map((task,index) => (
-                     <tr key={index} className="hover:bg-gray-50">
+                  filteredTasks.map((task, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-4 whitespace-nowrap">
                         <input
                           type="checkbox"
                           checked={selectedTasks.includes(task.task_id)}
                           onChange={() => handleCheckboxChange(task.task_id)}
-                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={(() => {
+                            if (!task.task_start_date) return false;
+                            const taskDate = new Date(task.task_start_date);
+                            const today = new Date(new Date().setHours(0, 0, 0, 0));
+                            const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+                            return taskDateOnly > today;
+                          })()}
                         />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -307,16 +336,15 @@ useEffect(()=>{
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
                         {formatDateTime(task.task_start_date) || "—"}
                       </td>
-                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
                         {formatDateTime(task.submission_date) || "—"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          task.frequency === 'Daily' ? 'bg-blue-100 text-blue-800' :
-                          task.frequency === 'Weekly' ? 'bg-green-100 text-green-800' :
-                          task.frequency === 'Monthly' ? 'bg-purple-100 text-purple-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
+                        <span className={`px-2 py-1 rounded-full text-xs ${task.frequency === 'Daily' ? 'bg-blue-100 text-blue-800' :
+                            task.frequency === 'Weekly' ? 'bg-green-100 text-green-800' :
+                              task.frequency === 'Monthly' ? 'bg-purple-100 text-purple-800' :
+                                'bg-gray-100 text-gray-800'
+                          }`}>
                           {task.frequency || "—"}
                         </span>
                       </td>
@@ -324,15 +352,15 @@ useEffect(()=>{
                         {task.enable_reminder || "—"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {task.require_attachment|| "—"}
+                        {task.require_attachment || "—"}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td colSpan={10} className="px-6 py-4 text-center text-gray-500">
-                      {searchTerm || nameFilter || freqFilter 
-                        ? "No tasks matching your filters" 
+                      {searchTerm || nameFilter || freqFilter
+                        ? "No tasks matching your filters"
                         : "No pending tasks found"}
                     </td>
                   </tr>

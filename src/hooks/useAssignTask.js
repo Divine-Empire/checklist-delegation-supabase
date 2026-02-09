@@ -35,7 +35,7 @@ export const useAssignTask = () => {
             try {
                 const { data, error } = await supabase
                     .from("working_day_calender")
-                    .select("working_date, day, week_num, month")
+                    .select("working_date, day")
                     .order("working_date", { ascending: true });
 
                 if (error) throw error;
@@ -79,23 +79,24 @@ export const useAssignTask = () => {
 
         // For one-time tasks
         if (formData.frequency === "one-time") {
-            const taskDateStr = findNextWorkingDay(selectedDate, workingDays);
-            const taskDateTimeStr = formatDateTimeForStorage(
-                new Date(taskDateStr.split("/").reverse().join("-")),
-                time
-            );
-
-            tasks.push({
-                description: formData.description,
-                department: formData.department,
-                givenBy: formData.givenBy,
-                doer: formData.doer,
-                dueDate: taskDateTimeStr,
-                status: "pending",
-                frequency: formData.frequency,
-                enableReminders: formData.enableReminders,
-                requireAttachment: formData.requireAttachment,
-            });
+            const dateStr = formatDateToDDMMYYYY(selectedDate);
+            if (workingDays.includes(dateStr)) {
+                const taskDateTimeStr = formatDateTimeForStorage(selectedDate, time);
+                tasks.push({
+                    description: formData.description,
+                    department: formData.department,
+                    givenBy: formData.givenBy,
+                    doer: formData.doer,
+                    dueDate: taskDateTimeStr,
+                    status: "pending",
+                    frequency: formData.frequency,
+                    enableReminders: formData.enableReminders,
+                    requireAttachment: formData.requireAttachment,
+                });
+            } else {
+                alert("The selected date is not a working day. Please select a working day from the list.");
+                return;
+            }
         } else {
             // For recurring tasks
             let currentDate = new Date(selectedDate);
@@ -104,77 +105,61 @@ export const useAssignTask = () => {
             const maxTasks = 365; // Safety limit
 
             while (currentDate <= endDate && taskCount < maxTasks) {
-                let taskDate;
+                let taskDateStr = "";
 
-                switch (formData.frequency) {
-                    case "daily":
-                        taskDate = findNextWorkingDay(currentDate, workingDays);
-                        currentDate = addDays(new Date(taskDate.split("/").reverse().join("-")), 1);
-                        break;
+                if (formData.frequency.startsWith("end-of-")) {
+                    const weekNum = formData.frequency === "end-of-last-week" ? -1 : parseInt(formData.frequency.split("-")[2]);
+                    taskDateStr = findEndOfWeekDate(currentDate, weekNum, workingDays);
+                    currentDate = addMonths(currentDate, 1);
+                } else {
+                    const checkDateStr = formatDateToDDMMYYYY(currentDate);
+                    if (workingDays.includes(checkDateStr)) {
+                        taskDateStr = checkDateStr;
+                    }
 
-                    case "weekly":
-                        taskDate = findNextWorkingDay(currentDate, workingDays);
-                        currentDate = addDays(new Date(taskDate.split("/").reverse().join("-")), 7);
-                        break;
-
-                    case "fortnightly":
-                        taskDate = findNextWorkingDay(currentDate, workingDays);
-                        currentDate = addDays(new Date(taskDate.split("/").reverse().join("-")), 14);
-                        break;
-
-                    case "monthly":
-                        taskDate = findNextWorkingDay(currentDate, workingDays);
-                        currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 1);
-                        break;
-
-                    case "quarterly":
-                        taskDate = findNextWorkingDay(currentDate, workingDays);
-                        currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 3);
-                        break;
-
-                    case "yearly":
-                        taskDate = findNextWorkingDay(currentDate, workingDays);
-                        currentDate = addYears(new Date(taskDate.split("/").reverse().join("-")), 1);
-                        break;
-
-                    case "end-of-1st-week":
-                    case "end-of-2nd-week":
-                    case "end-of-3rd-week":
-                    case "end-of-4th-week":
-                        const weekNum = parseInt(formData.frequency.split("-")[2]);
-                        taskDate = findEndOfWeekDate(currentDate, weekNum, workingDays);
-                        currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 1);
-                        break;
-
-                    case "end-of-last-week":
-                        taskDate = findEndOfWeekDate(currentDate, -1, workingDays);
-                        currentDate = addMonths(new Date(taskDate.split("/").reverse().join("-")), 1);
-                        break;
-
-                    default:
-                        currentDate = endDate; // Exit loop for unknown frequencies
-                        break;
+                    // Increment currentDate based on frequency
+                    switch (formData.frequency) {
+                        case "daily":
+                            currentDate = addDays(currentDate, 1);
+                            break;
+                        case "weekly":
+                            currentDate = addDays(currentDate, 7);
+                            break;
+                        case "fortnightly":
+                            currentDate = addDays(currentDate, 14);
+                            break;
+                        case "monthly":
+                            currentDate = addMonths(currentDate, 1);
+                            break;
+                        case "quarterly":
+                            currentDate = addMonths(currentDate, 3);
+                            break;
+                        case "yearly":
+                            currentDate = addYears(currentDate, 1);
+                            break;
+                        default:
+                            currentDate = addYears(currentDate, 10); // Break loop
+                            break;
+                    }
                 }
 
-                if (taskDate) {
-                    const taskDateTimeStr = formatDateTimeForStorage(
-                        new Date(taskDate.split("/").reverse().join("-")),
-                        time
-                    );
-
-                    tasks.push({
-                        description: formData.description,
-                        department: formData.department,
-                        givenBy: formData.givenBy,
-                        doer: formData.doer,
-                        dueDate: taskDateTimeStr,
-                        status: "pending",
-                        frequency: formData.frequency,
-                        enableReminders: formData.enableReminders,
-                        requireAttachment: formData.requireAttachment,
-                    });
-
-                    taskCount++;
+                if (taskDateStr) {
+                    const taskDateObj = new Date(taskDateStr.split("/").reverse().join("-"));
+                    if (taskDateObj <= endDate) {
+                        const taskDateTimeStr = formatDateTimeForStorage(taskDateObj, time);
+                        tasks.push({
+                            description: formData.description,
+                            department: formData.department,
+                            givenBy: formData.givenBy,
+                            doer: formData.doer,
+                            dueDate: taskDateTimeStr,
+                            status: "pending",
+                            frequency: formData.frequency,
+                            enableReminders: formData.enableReminders,
+                            requireAttachment: formData.requireAttachment,
+                        });
+                        taskCount++;
+                    }
                 }
             }
         }

@@ -112,6 +112,7 @@ export const createUserApi = async (newUser) => {
 
     if (error) {
       console.log("Error when posting data:", error);
+      throw error;
     } else {
       console.log("Posted successfully", data);
     }
@@ -119,6 +120,7 @@ export const createUserApi = async (newUser) => {
     return data;
   } catch (error) {
     console.log("Error from Supabase:", error);
+    throw error;
   }
 };
 
@@ -153,8 +155,8 @@ export const updateUserDataApi = async ({ id, updatedUser }) => {
       .select()
       .single();
 
-      console.log(data,"data")
-      console.log(error,"error")
+    console.log(data, "data")
+    console.log(error, "error")
     if (error) {
       console.log("Error when update data", error);
       throw error;
