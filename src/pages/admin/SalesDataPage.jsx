@@ -406,19 +406,39 @@ function AccountDataPage() {
       let endOfWindow = new Date(today);
       endOfWindow.setHours(23, 59, 59, 999);
 
-      if (frequency === 'daily') {
-        // Show Today + Next 2 Days (e.g. 7th, 8th, 9th)
-        endOfWindow.setDate(today.getDate() + 2);
-      } else if (frequency.includes('monthly')) {
-        // Show current month and everything until end of next month
-        endOfWindow = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-      } else if (frequency.includes('weekly') || frequency.includes('alternate') || frequency.includes('fortnightly')) {
-        // Show next 14 days for weekly/alternate/fortnightly tasks
-        endOfWindow.setDate(today.getDate() + 14);
-      } else {
-        // Default buffer for others (e.g. Quarterly, Yearly, or unspecified)
-        endOfWindow.setDate(today.getDate() + 30);
-      }
+    if (frequency === 'daily') {
+  // Show Today + Next 2 Days
+  endOfWindow.setDate(today.getDate() + 2);
+
+} else if (frequency.includes('monthly')) {
+  // Show current month + next month
+  endOfWindow = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+
+} else if (
+  frequency.includes('weekly') ||
+  frequency.includes('alternate') ||
+  frequency.includes('fortnightly')
+) {
+  // Show next 14 days
+  endOfWindow.setDate(today.getDate() + 14);
+
+} else if (
+  frequency.includes('yearly') ||
+  frequency.includes('quarterly') ||
+  frequency.includes('half')
+) {
+  // ✅ Yearly / long-term → show for 1 year
+  endOfWindow = new Date(
+    today.getFullYear() + 1,
+    today.getMonth(),
+    today.getDate()
+  );
+
+} else {
+  // Fallback
+  endOfWindow.setDate(today.getDate() + 30);
+}
+
 
       endOfWindow.setHours(23, 59, 59, 999);
 
