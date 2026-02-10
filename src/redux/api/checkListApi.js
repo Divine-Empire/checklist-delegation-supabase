@@ -3,16 +3,33 @@ import supabase from "../../SupabaseClient";
 // In your API file
 // 1. COMPLETE API FUNCTIONS - checkListApi.js
 
-export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchTerm = '') => {
+export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchTerm = '', statusFilter = 'all') => {
   const role = localStorage.getItem('role');
   const username = localStorage.getItem('user-name');
   const userAccess = localStorage.getItem('user_access');
 
   try {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Helper to get ISO string that matches local time digits (treating local as UTC)
+    // This handles the case where DB stores local timestamps as UTC-naive
+    const toLocalISOString = (date) => {
+      const offset = date.getTimezoneOffset() * 60000;
+      return new Date(date.getTime() - offset).toISOString();
+    };
+
+    const todayISO = toLocalISOString(today);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const tomorrowISO = toLocalISOString(tomorrow);
+
+    console.log("Filtering (Local Adjusted):", { statusFilter, todayISO, tomorrowISO, userTime: new Date().toString() });
+
     const futureLimit = new Date();
     futureLimit.setDate(today.getDate() + 60); // Fetch up to 60 days in the future
-    const futureLimitISO = futureLimit.toISOString();
+    const futureLimitISO = toLocalISOString(futureLimit);
 
     // Calculate range for pagination
     const from = (page - 1) * limit;
@@ -21,11 +38,37 @@ export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchT
     let query = supabase
       .from('checklist')
       .select('*', { count: 'exact' })
-      .lte('task_start_date', futureLimitISO)
-      .order('task_start_date', { ascending: true })
       .is("submission_date", null)
-      .is("status", null)
-      .range(from, to);
+      .is("status", null);
+
+    // Apply Status Filter
+    if (statusFilter === 'today') {
+      // Tasks for today (start date >= today AND start date < tomorrow)
+      query = query
+        .gte('task_start_date', todayISO)
+        .lt('task_start_date', tomorrowISO)
+        .order('task_start_date', { ascending: true });
+    } else if (statusFilter === 'upcoming') {
+      // Tasks for future (start date > tomorrow)
+      query = query
+        .gt('task_start_date', tomorrowISO)
+        .lte('task_start_date', futureLimitISO)
+        .order('task_start_date', { ascending: true });
+    } else if (statusFilter === 'overdue') {
+      // Tasks before today
+      query = query
+        .lt('task_start_date', todayISO)
+        .order('task_start_date', { ascending: true }); // Oldest first for overdue
+    } else {
+      // Default behavior (All pending)
+      // We still want to see everything up to future limit
+      query = query
+        .lte('task_start_date', futureLimitISO)
+        .order('task_start_date', { ascending: true });
+    }
+
+    // Apply pagination
+    query = query.range(from, to);
 
     // Apply search filter if searchTerm exists
     if (searchTerm && searchTerm.trim() !== '') {

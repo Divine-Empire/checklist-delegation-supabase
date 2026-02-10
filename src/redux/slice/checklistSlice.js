@@ -13,9 +13,13 @@ export const checklistHistoryData = createAsyncThunk(
 
 export const checklistData = createAsyncThunk(
   'fetch/checklist',
-  async (page = 1) => {
-    const { data, totalCount } = await fetchChechListDataSortByDate(page);
-    return { data, page, totalCount };
+  async ({ page = 1, searchTerm = '', statusFilter = 'all' }, { rejectWithValue }) => {
+    try {
+      const { data, totalCount } = await fetchChechListDataSortByDate(page, 50, searchTerm, statusFilter);
+      return { data, page, totalCount, searchTerm, statusFilter };
+    } catch (error) {
+      return rejectWithValue(error.response ? error.response.data : error.message);
+    }
   }
 );
 

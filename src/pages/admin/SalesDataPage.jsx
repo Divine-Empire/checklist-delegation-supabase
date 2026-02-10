@@ -58,7 +58,7 @@ function AccountDataPage() {
   console.log(doerName)
 
   useEffect(() => {
-    dispatch(checklistData(1))
+    dispatch(checklistData({ page: 1, searchTerm: '', statusFilter: 'all' }))
     dispatch(checklistHistoryData(1))
     dispatch(uniqueDoerNameData());
 
@@ -75,6 +75,21 @@ function AccountDataPage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Debounce search and filter updates
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      dispatch(checklistData({
+        page: 1,
+        searchTerm,
+        statusFilter: statusLabelFilter
+      }));
+      // Reset page locally
+      // Note: slice handles resetting data when page is 1
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, statusLabelFilter, dispatch]);
+
   const handleScrollPending = useCallback(() => {
     if (!tableContainerRef.current || loading || isFetchingMore || !hasMore || checklist.length === 0) return
 
@@ -83,10 +98,14 @@ function AccountDataPage() {
 
     if (isNearBottom) {
       setIsFetchingMore(true)
-      dispatch(checklistData(currentPage + 1))
+      dispatch(checklistData({
+        page: currentPage + 1,
+        searchTerm,
+        statusFilter: statusLabelFilter
+      }))
         .finally(() => setIsFetchingMore(false))
     }
-  }, [loading, isFetchingMore, hasMore, currentPage, dispatch, checklist.length])
+  }, [loading, isFetchingMore, hasMore, currentPage, dispatch, checklist.length, searchTerm, statusLabelFilter])
 
   // Handle scroll for history
   const handleScrollHistory = useCallback(() => {
@@ -365,85 +384,22 @@ function AccountDataPage() {
     }
   };
 
-  // Filtered data for pending tasks
+  // Filtered data for pending tasks - Simplified as server handles main filtering
   const filteredAccountData = useMemo(() => {
     if (!Array.isArray(checklist)) return [];
 
-    let filtered = checklist;
+    // The API now handles:
+    // 1. Pagination
+    // 2. Search (searchTerm)
+    // 3. Status Filtering (today, upcoming, overdue)
+    // 4. Role-based filtering
 
-    // Apply search filter first
-    if (searchTerm) {
-      filtered = filtered.filter((account) =>
-        Object.values(account).some(
-          (value) =>
-            value &&
-            value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      );
-    }
+    // So we just return the checklist as is, or apply minor client-side tweaks if needed.
+    // We can keep the sort just in case, though API does it too.
 
-    // Apply date filter - show today's tasks, upcoming tasks (based on frequency), and overdue pending tasks
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    return checklist;
 
-    filtered = filtered.filter((account) => {
-      if (!account.task_start_date) return false;
-
-      const taskDate = new Date(account.task_start_date);
-      if (isNaN(taskDate.getTime())) return false;
-
-      // Check if submission_date is null (pending task)
-      const isPending = account.submission_date === null || account.submission_date === undefined || account.submission_date === "";
-
-      const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
-      const isOverduePending = taskDateOnly < today && isPending;
-      const isToday = taskDateOnly.getTime() === today.getTime();
-
-      // 2. Today's and upcoming tasks based on frequency
-      const frequency = (account.frequency || "").toLowerCase().trim();
-
-      // Default visibility window (End of Today)
-      let endOfWindow = new Date(today);
-      endOfWindow.setHours(23, 59, 59, 999);
-
-      if (frequency === 'daily') {
-        // Show Today + Next 2 Days (e.g. 7th, 8th, 9th)
-        endOfWindow.setDate(today.getDate() + 2);
-      } else if (frequency.includes('monthly')) {
-        // Show current month and everything until end of next month
-        endOfWindow = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-      } else if (frequency.includes('weekly') || frequency.includes('alternate') || frequency.includes('fortnightly')) {
-        // Show next 14 days for weekly/alternate/fortnightly tasks
-        endOfWindow.setDate(today.getDate() + 14);
-      } else {
-        // Default buffer for others (e.g. Quarterly, Yearly, or unspecified)
-        endOfWindow.setDate(today.getDate() + 30);
-      }
-
-      endOfWindow.setHours(23, 59, 59, 999);
-
-      const isUpcomingOrToday = taskDate >= today && taskDate <= endOfWindow;
-      const isUpcoming = taskDateOnly > today && taskDate <= endOfWindow;
-
-      // Apply Label Filter
-      if (statusLabelFilter === "overdue") return isOverduePending;
-      if (statusLabelFilter === "today") return isToday;
-      if (statusLabelFilter === "upcoming") return isUpcoming;
-
-      // Default: Return true if task is for today or within the future window OR overdue
-      return isUpcomingOrToday || isOverduePending;
-    });
-
-    return filtered.sort((a, b) => {
-      const dateA = new Date(a.task_start_date || "");
-      const dateB = new Date(b.task_start_date || "");
-
-      if (!dateA || isNaN(dateA.getTime())) return 1;
-      if (!dateB || isNaN(dateB.getTime())) return -1;
-
-      return dateA.getTime() - dateB.getTime(); // Sort from earliest to latest
-    });
-  }, [checklist, searchTerm, statusLabelFilter]);
+  }, [checklist]);
 
   const filteredHistoryData = useMemo(() => {
     if (!Array.isArray(history)) return []
