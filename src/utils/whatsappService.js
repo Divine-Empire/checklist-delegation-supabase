@@ -1,62 +1,45 @@
 import supabase from "../SupabaseClient";
 
 /**
- * Sends a WhatsApp notification using Maytapi
+ * Sends a WhatsApp notification using Supabase Edge Function
  * @param {string} userName - The name of the user to notify
  * @param {string} message - The message text
  */
 export const sendWhatsAppNotification = async (userName, message) => {
   try {
-    const { data: user, error: userError } = await supabase
-      .from("users")
-      .select("number")
-      .eq("user_name", userName)
-      .single();
+    const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+      body: { userName, message },
+    });
 
-    if (userError || !user?.number) {
-      console.warn(
-        `⚠️ Could not send WhatsApp: User ${userName} phone not found.`,
-      );
-      return;
-    }
-
-    const {
-      VITE_MAYTAPI_PRODUCT_ID: productId,
-      VITE_MAYTAPI_TOKEN: token,
-      VITE_MAYTAPI_PHONE_ID: phoneId,
-    } = import.meta.env;
-    if (!productId || !token || !phoneId) {
-      console.warn("⚠️ Maytapi credentials missing in .env");
-      return;
-    }
-
-    const phone = String(user.number);
-    const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
-
-    const response = await fetch(
-      `https://api.maytapi.com/api/${productId}/${phoneId}/sendMessage`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-maytapi-key": token,
-        },
-        body: JSON.stringify({
-          to_number: formattedPhone,
-          type: "text",
-          message: message,
-        }),
-      },
-    );
-
-    const result = await response.json();
-    if (result.success) {
-      console.log(`✅ WhatsApp sent to ${userName}`);
+    if (error) {
+      console.error("❌ WhatsApp Service (Edge Function) Error:", error);
     } else {
-      console.error("❌ Maytapi Error:", result);
+      console.log(`✅ WhatsApp sent to ${userName} via Edge Function`);
     }
   } catch (error) {
     console.error("🛑 WhatsApp Service Error:", error);
+  }
+};
+
+/**
+ * Sends a WhatsApp template notification using Supabase Edge Function
+ * @param {string} userName - The name of the user to notify
+ * @param {string} templateName - The name of the WhatsApp template
+ * @param {Array<string>} templateArgs - The list of parameters for the template
+ */
+export const sendWhatsAppTemplate = async (userName, templateName, templateArgs) => {
+  try {
+    const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+      body: { userName, templateName, templateArgs },
+    });
+
+    if (error) {
+      console.error("❌ WhatsApp Template Service (Edge Function) Error:", error);
+    } else {
+      console.log(`✅ WhatsApp template "${templateName}" sent to ${userName} via Edge Function`);
+    }
+  } catch (error) {
+    console.error("🛑 WhatsApp Template Service Error:", error);
   }
 };
 
@@ -131,9 +114,12 @@ export const sendDailyTaskSummary = async (userName) => {
     const pending = (cPending.count || 0) + (dPending.count || 0);
     const todayCount = (cToday.count || 0) + (dToday.count || 0);
 
-    const message = `📝 *Daily Task Summary*\n👋 Hello ${userName},\n\nHere is your task update for today:\n\n📋 Total Tasks: ${total}\n⏳ Total Pending: ${pending}\n📅 Today’s Tasks: ${todayCount}\n👉Click the Link Below - https://checklist-delegation-supabase-six.vercel.app\n\nPlease stay on top of your tasks and let us know if you need any assistance! 😊\n\nBest regards,\nThe Divine Empire Team`;
-
-    await sendWhatsAppNotification(userName, message);
+    await sendWhatsAppTemplate(userName, "daily_reminder", [
+      userName,
+      String(total),
+      String(todayCount),
+      String(pending),
+    ]);
   } catch (error) {
     console.error("🛑 Task Summary Error:", error);
   }
@@ -145,9 +131,17 @@ export const sendDailyTaskSummary = async (userName) => {
  * Recipient: User
  */
 export const notifyTaskAssignment = async (userName, task) => {
-  const message = `🔔 *REMINDER: DELEGATION TASK*\nDear ${userName},\n\nYou have been assigned a new task. Please find the details below:\n\n📌 Task ID: ${task.task_id || "N/A"}\n🧑💼 Allocated By: ${task.given_by}\n📝 Task Description: ${task.task_description}\n\n⏳ Deadline: ${task.task_start_date}\n✅ Closure Link: https://checklist-delegation-supabase-six.vercel.app\n\nPlease make sure the task is completed before the deadline. For any assistance, feel free to reach out.\n\nBest regards,\nThe Divine Empire India Pvt. Ltd.`;
+  const startDate = task.created_at ? new Date(task.created_at).toLocaleDateString() : new Date().toLocaleDateString();
+  const deadline = task.task_start_date ? new Date(task.task_start_date).toLocaleDateString() : "N/A";
 
-  await sendWhatsAppNotification(userName, message);
+  await sendWhatsAppTemplate(userName, "new_delegation_task_assign", [
+    userName,
+    String(task.task_id || "N/A"),
+    task.given_by || "N/A",
+    task.task_description || "N/A",
+    startDate,
+    deadline,
+  ]);
 };
 
 /**
@@ -165,14 +159,19 @@ export const notifyTaskExtension = async (userName, task, nextDate) => {
     return;
   }
 
-  const message = `🔄 *TASK EXTENSION NOTICE*\nDear ${allocatorName},\n\nThis is to inform you that the deadline for a delegated task has been extended for ${userName}. Please find the updated details below:\n\n📌 Task ID: ${task.task_id}\n� Assigned To: ${userName}\n📝 Task Description: ${task.task_description}\n\n⏳ Updated Deadline: ${nextDate}\n✅ Closure Link: https://checklist-delegation-supabase-six.vercel.app\n\nPlease ensure the task is completed within the new timeline. If you require any support, feel free to contact the concerned person.\n\nBest regards,\nThe Divine Empire India Pvt. Ltd.`;
-
-  const userMessage = `🔄 *TASK EXTENSION NOTICE*\nDear ${userName},\n\nYour extension request for the following task has been recorded:\n\n📌 Task ID: ${task.task_id}\n📝 Task Description: ${task.task_description}\n\n⏳ Updated Deadline: ${nextDate}\n✅ Closure Link: https://checklist-delegation-supabase-six.vercel.app\n\nPlease ensure the task is completed within the new timeline.\n\nBest regards,\nThe Divine Empire India Pvt. Ltd.`;
+  const templateArgs = [
+    String(task.task_id || "N/A"),
+    userName,
+    task.task_description || "N/A",
+    task.given_by || "N/A",
+    nextDate,
+    task.remarks || task.reason || "No reason provided",
+  ];
 
   try {
     await Promise.all([
-      sendWhatsAppNotification(allocatorName, message),
-      sendWhatsAppNotification(userName, userMessage),
+      sendWhatsAppTemplate(allocatorName, "extend_task_reminder", templateArgs),
+      sendWhatsAppTemplate(userName, "extend_task_reminder", templateArgs),
     ]);
     console.log(
       `✅ Both ${allocatorName} and ${userName} notified of extension (Task ${task.task_id})`,
@@ -181,3 +180,24 @@ export const notifyTaskExtension = async (userName, task, nextDate) => {
     console.error("🛑 Extension Notification Error:", error);
   }
 };
+
+/**
+ * Notifies a user when a new checklist task is assigned
+ * Template: new_checklist_task_assign
+ * Recipient: User
+ */
+export const notifyChecklistTaskAssignment = async (userName, task) => {
+  const startDate = task.task_start_date 
+    ? new Date(task.task_start_date).toLocaleDateString() 
+    : new Date().toLocaleDateString();
+
+  await sendWhatsAppTemplate(userName, "new_checklist_task_assign", [
+    userName,
+    task.given_by || "N/A",
+    task.department || "N/A",
+    task.task_description || "N/A",
+    startDate,
+    task.frequency || "N/A",
+  ]);
+};
+

@@ -97,7 +97,7 @@ export const fetchUniqueDoerNameDataApi = async () => {
   }
 };
 
-import { notifyTaskAssignment } from "../../utils/whatsappService";
+import { notifyTaskAssignment, notifyChecklistTaskAssignment } from "../../utils/whatsappService";
 
 export const pushAssignTaskApi = async (generatedTasks) => {
   const submitTable =
@@ -129,6 +129,14 @@ export const pushAssignTaskApi = async (generatedTasks) => {
           await notifyTaskAssignment(task.name, task);
           await supabase
             .from("delegation")
+            .update({ message_status: new Date().toISOString() })
+            .eq("task_id", task.task_id);
+        });
+      } else if (submitTable === "checklist") {
+        data.forEach(async (task) => {
+          await notifyChecklistTaskAssignment(task.name, task);
+          await supabase
+            .from("checklist")
             .update({ message_status: new Date().toISOString() })
             .eq("task_id", task.task_id);
         });
