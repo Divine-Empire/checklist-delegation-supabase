@@ -133,8 +133,27 @@ export const pushAssignTaskApi = async (generatedTasks) => {
             .eq("task_id", task.task_id);
         });
       } else if (submitTable === "checklist") {
+        // Group tasks by doer (name) to ensure we only send one notification per user
+        const tasksByUser = {};
+        data.forEach((task) => {
+          if (!tasksByUser[task.name]) {
+            tasksByUser[task.name] = [];
+          }
+          tasksByUser[task.name].push(task);
+        });
+
+        // For each user, send a single notification for the earliest start date task
+        Object.keys(tasksByUser).forEach(async (userName) => {
+          const userTasks = tasksByUser[userName];
+          const sortedTasks = [...userTasks].sort(
+            (a, b) => new Date(a.task_start_date) - new Date(b.task_start_date)
+          );
+          const representativeTask = sortedTasks[0];
+          await notifyChecklistTaskAssignment(userName, representativeTask);
+        });
+
+        // Update message_status for all checklist tasks in the database
         data.forEach(async (task) => {
-          await notifyChecklistTaskAssignment(task.name, task);
           await supabase
             .from("checklist")
             .update({ message_status: new Date().toISOString() })
